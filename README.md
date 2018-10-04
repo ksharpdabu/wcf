@@ -4,7 +4,8 @@
 ## 编译方式
 ```shell
 git clone https://github.com/xxxsen/wcf.git
-cd wcf 
+#进到工程根目录(bin, pkg, src所在的目录为根目录)
+cd wcf/wcf
 #将wcf工程加到GOPATH变量中
 export GOPATH=$GOPATH:`pwd`
 
