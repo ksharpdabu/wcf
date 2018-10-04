@@ -1,6 +1,28 @@
 package socks
 
-import "testing"
+import (
+	"testing"
+	"time"
+	"proxy"
+)
+
+func TestProxy(t *testing.T) {
+	conn, err := proxy.DialTimeout("socks", "solidot.org:80", "127.0.0.1:8010", time.Second * 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = conn.Write([]byte("GET / HTTP1.1\r\n\r\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 2048)
+	cnt, err := conn.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("cnt:%d, string:%s", cnt, string(buf[:cnt]))
+	conn.Close()
+}
 
 func TestCheckResult(t *testing.T) {
 	{

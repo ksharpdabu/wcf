@@ -10,7 +10,14 @@ import (
 	"bytes"
 	"encoding/hex"
 	"strconv"
+	"proxy"
 )
+
+func init() {
+	proxy.RegistClient("http", func(addr string, proxy string, timeout time.Duration) (net.Conn, error) {
+		return DialWithTimeout(addr, proxy, timeout)
+	})
+}
 
 type HttpClient struct {
 	net.Conn

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 )
 
 const (
@@ -43,6 +44,7 @@ type ProxyListener interface {
 }
 
 type BindFunc func(string) (ProxyListener, error)
+type DialFunc func(addr string, proxy string, timeout time.Duration) (net.Conn, error)
 
 type bindst struct {
 	mu sync.RWMutex
@@ -50,10 +52,13 @@ type bindst struct {
 }
 
 var bt *bindst
+var dt *dialst
 
 func init() {
 	bt = &bindst{}
 	bt.mp = make(map[string]BindFunc)
+	dt = &dialst{}
+	dt.mp = make(map[string]DialFunc)
 }
 
 func Regist(network string, fun BindFunc) {
@@ -68,5 +73,25 @@ func Bind(network string, addr string) (ProxyListener, error) {
 	if v, ok := bt.mp[network]; ok {
 		return v(addr)
 	}
-	return nil, errors.New(fmt.Sprintf("unsupport protocol:%s", network))
+	return nil, errors.New(fmt.Sprintf("bind unsupport protocol:%s", network))
+}
+
+type dialst struct {
+	mu sync.RWMutex
+	mp map[string]DialFunc
+}
+
+func RegistClient(network string, fun DialFunc) {
+	dt.mu.Lock()
+	defer dt.mu.Unlock()
+	dt.mp[network] = fun
+}
+
+func DialTimeout(network string, addr string, proxy string, timeout time.Duration) (net.Conn, error) {
+	dt.mu.RLock()
+	defer dt.mu.RUnlock()
+	if v, ok := dt.mp[network]; ok {
+		return v(addr, proxy, timeout)
+	}
+	return nil, errors.New(fmt.Sprintf("dial unsupport protocol:%s", network))
 }

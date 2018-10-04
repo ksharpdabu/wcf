@@ -17,6 +17,12 @@ type SocksClient struct {
 	rbuf []byte
 }
 
+func init() {
+	proxy.RegistClient("socks", func(addr string, proxy string, timeout time.Duration) (net.Conn, error) {
+		return DialWithTimeout(addr, proxy, timeout)
+	})
+}
+
 func(this *SocksClient) Read(b []byte) (int, error) {
 	if len(this.rbuf) != 0 {
 		cnt := copy(b, this.rbuf)
@@ -147,7 +153,11 @@ func handleShake(addr string, conn net.Conn) (*SocksClient, error) {
 		if cret < 0 {
 			return nil, errors.New(fmt.Sprintf("check socks rsp fail, ret:%d, err:%v", cret, cerr))
 		}
-		buffer = buffer[cret:]
+		if cret == index {
+			buffer = nil
+		} else {
+			buffer = buffer[cret:index]
+		}
 		break
 	}
 	cli := &SocksClient{Conn:conn, rbuf:buffer}

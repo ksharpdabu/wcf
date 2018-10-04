@@ -3,10 +3,11 @@ package http
 import (
 	"testing"
 	"time"
+	"proxy"
 )
 
 func TestProxy(t *testing.T) {
-	conn, err := DialWithTimeout("solidot.org:80", "127.0.0.1:8011", time.Second * 5)
+	conn, err := proxy.DialTimeout("http", "solidot.org:80", "127.0.0.1:8011", time.Second * 5)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,4 +21,5 @@ func TestProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Log(string(buf[:cnt]))
+	conn.Close()
 }
