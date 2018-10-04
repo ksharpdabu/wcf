@@ -1,0 +1,37 @@
+package msg;
+
+enum AddressType {
+    ADDR_TYPE_IPV4 = 0x1;
+    ADDR_TYPE_DOMAIN = 0x3;
+    ADDR_TYPE_IPV6 = 0x4;
+}
+
+enum OPType {
+    OP_TYPE_PROXY = 1;
+    OP_TYPE_FORWARD = 2;
+}
+
+enum AuthResult {
+    AUTH_OK = 0;
+    AUTH_USER_PWD_INVALID = 10000;
+    AUTH_INVALID_ADDRESS = 10001;
+}
+
+message RelayAddress {
+    optional int32 address_type = 1;  //refer AddressType
+    optional string address = 2;
+    optional string name = 3;
+    optional uint32 port = 4;
+}
+
+message AuthMsgReq {
+    optional string user = 1;
+    optional string pwd = 2;
+    optional RelayAddress address = 3;
+    optional int32 op_type = 4;       //refer OPType
+}
+
+message AuthMsgRsp {
+    optional int32 result = 1;
+    optional uint32 token = 2;
+}

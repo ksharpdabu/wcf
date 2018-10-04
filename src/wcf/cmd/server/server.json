@@ -1,0 +1,8 @@
+{
+	"localaddr":"127.0.0.1:8020",
+	"timeout":5,
+	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
+	"encrypt":"xor",
+	"key":"hellotest",
+	"secure_check":true
+}

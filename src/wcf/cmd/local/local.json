@@ -1,0 +1,17 @@
+{
+	"localaddr": [
+		{"name":"socks", "address":"127.0.0.1:8010"},
+		{"name":"http", "address":"127.0.0.1:8011"},
+		{"name":"forward", "address":"127.0.0.1:8012"}
+	],
+	"proxyaddr":"127.0.0.1:8020",
+	"user":"test",
+	"pwd":"xxx",
+	"timeout":5,
+	"host":{
+		"black":"D:/GoProj/wcf_proj/src/wcf/cmd/local/black.rule",
+		"no_proxy":"D:/GoProj/wcf_proj/src/wcf/cmd/local/no_proxy.rule"
+	},
+	"encrypt":"xor",
+	"key":"hellotest"
+}
