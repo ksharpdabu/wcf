@@ -11,7 +11,7 @@ import (
 	_ "mix_layer/xor"
 )
 
-var config *string = flag.String("config", "D:/GoProj/wcf_proj/src/wcf/cmd/server/server.json", "config file")
+var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/wcf/cmd/server/server.json", "config file")
 
 func main() {
 	customFormatter := new(log.TextFormatter)
