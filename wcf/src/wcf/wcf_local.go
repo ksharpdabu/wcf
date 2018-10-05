@@ -11,12 +11,14 @@ import (
 	"mix_layer"
 	"proxy"
 	"net_utils"
+	"lb"
 )
 
 type LocalClient struct {
 	config *LocalConfig
 	noProxy *check.Host
 	black *check.Host
+	lb *lb.LoadBalance
 }
 
 func NewClient(config *LocalConfig) *LocalClient {
@@ -39,6 +41,11 @@ func NewClient(config *LocalConfig) *LocalClient {
 		} else {
 			cli.noProxy = nop
 		}
+	}
+	cli.lb = lb.New(cli.config.Lbinfo.MaxErrCnt, cli.config.Lbinfo.MaxFailTime)
+	for _, v := range cli.config.Proxyaddr {
+		log.Infof("Add addr:%s weight:%d to load balance", v.Addr, v.Weight)
+		cli.lb.Add(v.Addr, v.Weight)
 	}
 	return cli
 }
@@ -72,16 +79,29 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var remote net.Conn
 	var err error
 	var connAddr string
+	needUpdate := false
 	if !this.noProxy.IsSubExists(conn.GetTargetName()) {
-		connAddr = this.config.Proxyaddr
+		newConnAddr, err := this.lb.Get()
+		if err != nil {
+			logger.Errorf("Get balance ip fail, err:%v, conn:%s", err, conn.RemoteAddr())
+			conn.Close()
+			return
+		}
+		connAddr = newConnAddr
+		needUpdate = true
+
 	} else {
 		connAddr = conn.GetTargetAddress()
 	}
 	remote, err = net.DialTimeout("tcp", connAddr, this.config.Timeout)
+	if needUpdate {
+		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
+		this.lb.Update(connAddr, err == nil)
+	}
 	if err != nil {
 		logger.Errorf("Dial connection to proxy/target svr fail, err:%s, svr addr:%s", err, connAddr)
 		conn.Close()
-		return ;
+		return
 	}
 	defer func() {
 		conn.Close()
