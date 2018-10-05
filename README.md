@@ -1,4 +1,4 @@
-# wcf
+﻿# wcf
 代理工具, 支持socks代理, http代理, 流量中转, 以前用shadowsocks的时候总是需要用其他工具才能生成http代理, 所以这次写这个东西, 直接加入http代理支持。
 
 ## 编译方式
@@ -29,6 +29,7 @@ go build
 		{"name":"forward", "address":"127.0.0.1:8012"}
 	],
 	"loadbalance":{
+		"enable":true, 
 		"max_errcnt":2,
 		"max_failtime":30
 	},	
