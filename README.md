@@ -28,7 +28,14 @@ go build
 		{"name":"http", "address":"127.0.0.1:8011"},
 		{"name":"forward", "address":"127.0.0.1:8012"}
 	],
-	"proxyaddr":"127.0.0.1:8020",
+	"loadbalance":{
+		"max_errcnt":2,
+		"max_failtime":30
+	},	
+	"proxyaddr":[
+		{"addr":"127.0.0.1:8020", "weight":100},
+		{"addr":"127.0.0.1:8030", "weight":50}
+	],	
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":5,
@@ -41,7 +48,12 @@ go build
 }
 ```
 * localaddr 为本地监听的地址, 目前支持3种代理, socks5, http, forward(透传)
-* proxyaddr 为远程server的地址, 上面写的是127.0.0.1:8020, 需要改成你实际的服务器地址
+* loadbalance 负载均衡模块
+* * max_errcnt 连接错误多少次会被踢掉
+* * max_failtime 连接被踢掉后多久重新可用, 单位为秒
+* proxyaddr 为远程server的地址, 及其权重信息
+* * addr 远程服务器地址
+* * weight 权重信息
 * user/pwd 鉴权用的用户名和密码
 * timeout 链接超时时间, 单位是秒
 * host 这个是用来配置本地host的, black为黑名单域名, 在这个文件内的域名都会被reset. no_proxy为不进行代理的域名, 在这个名单内的地址, 会直接在本地进行请求而不走远程server. 这2个的配置方式都是一行一个域名.
