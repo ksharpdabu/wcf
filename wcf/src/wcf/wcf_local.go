@@ -95,8 +95,10 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	}
 	remote, err = net.DialTimeout("tcp", connAddr, this.config.Timeout)
 	if needUpdate {
-		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
-		this.lb.Update(connAddr, err == nil)
+		if this.config.Lbinfo.Enable {
+			logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
+			this.lb.Update(connAddr, err == nil)
+		}
 	}
 	if err != nil {
 		logger.Errorf("Dial connection to proxy/target svr fail, err:%s, svr addr:%s", err, connAddr)

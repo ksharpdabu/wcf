@@ -17,6 +17,7 @@ type AddrConfig struct {
 }
 
 type LoadBalanceInfo struct {
+	Enable bool                  `json:"enable"`
 	MaxErrCnt int                `json:"max_errcnt"`
 	MaxFailTime time.Duration    `json:"max_failtime"`
 }

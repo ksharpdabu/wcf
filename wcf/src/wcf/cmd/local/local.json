@@ -5,6 +5,7 @@
 		{"name":"forward", "address":"127.0.0.1:8012"}
 	],
 	"loadbalance":{
+		"enable":true,
 		"max_errcnt":5,
 		"max_failtime":30
 	},
