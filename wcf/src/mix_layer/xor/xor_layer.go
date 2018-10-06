@@ -16,21 +16,24 @@ func init() {
 type Xor struct {
 	net.Conn
 	key string
-	kIndex int
+	rIndex int
+	wIndex int
 }
 
 func(this *Xor) SetKey(key string) {
 	v := sha1.Sum([]byte(key))
 	this.key = string(v[:])
-	this.kIndex = len(key) * 13 % len(this.key)
+	this.rIndex = len(key) * 13 % len(this.key)
+	this.wIndex = len(key) * 13 % len(this.key)
 }
 
-func(this *Xor) xor(b []byte) {
+func(this *Xor) xor(b []byte, loc int) int {
 	for i := 0; i < len(b); i++ {
-		b[i] = b[i] ^ this.key[this.kIndex % len(this.key)]
+		b[i] = b[i] ^ this.key[loc % len(this.key)]
 		//b[i] = b[i] ^ 0xff
-		this.kIndex++
+		loc++
 	}
+	return loc
 }
 
 func(this *Xor) Read(b []byte) (n int, err error) {
@@ -38,14 +41,14 @@ func(this *Xor) Read(b []byte) (n int, err error) {
 	if err != nil {
 		return cnt, err
 	}
-	this.xor(b[:cnt])
+	this.rIndex = this.xor(b[:cnt], this.rIndex)
 	return cnt, err
 }
 
 func(this *Xor) Write(b []byte) (int, error) {
 	bf := make([]byte, len(b))
 	copy(bf, b)
-	this.xor(bf)
+	this.wIndex = this.xor(bf, this.wIndex)
 	err := net_utils.SendSpecLen(this.Conn, bf)
 	if err != nil {
 		return 0, err

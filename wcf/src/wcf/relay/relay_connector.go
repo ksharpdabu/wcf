@@ -90,6 +90,9 @@ func(this *RelayFrameConn) Read(b []byte) (int, error) {
 }
 
 func(this *RelayFrameConn) Write(b []byte) (int, error) {
+	if len(b) > 2 * int(MAX_BYTE_PER_PACKET) / 3 {
+		b = b[:len(b) * 2 / 3]
+	}
 	pkt, err := BuildDataPacket(b)
 	if err != nil {
 		return 0, err
