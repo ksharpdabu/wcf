@@ -176,7 +176,7 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 		targetAddress:reqmsg.GetAddress().GetAddress(),
 		targetType:reqmsg.GetAddress().GetAddressType(),
 		token:token,
-		Conn:conn,
+		Conn:WrapRelayFrameConn(conn, nil, nil),
 		user:reqmsg.GetUser(),
 		targetName:reqmsg.Address.GetName(),
 		targetPort:reqmsg.Address.GetPort(),

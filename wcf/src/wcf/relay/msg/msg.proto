@@ -35,3 +35,8 @@ message AuthMsgRsp {
     optional int32 result = 1;
     optional uint32 token = 2;
 }
+
+message DataPacket {
+    optional bytes data = 1;
+    optional uint32 crc = 2;
+}

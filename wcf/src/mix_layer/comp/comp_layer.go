@@ -1,15 +1,17 @@
 package comp
 
 import (
-	"mix_layer"
+	//"mix_layer"
 	"net"
 	"compress/gzip"
 )
 
 func init() {
-	mix_layer.Regist("comp", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-		return Wrap(key, conn)
-	})
+	//目前使用会产生死循环,先不提供
+	//
+	//mix_layer.Regist("comp", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
+	//	return Wrap(key, conn)
+	//})
 }
 
 type Comp struct {

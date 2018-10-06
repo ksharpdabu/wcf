@@ -5,17 +5,16 @@
 		{"name":"forward", "address":"127.0.0.1:8012"}
 	],
 	"loadbalance":{
-		"enable":true,
+		"enable":false,
 		"max_errcnt":5,
 		"max_failtime":30
 	},
 	"proxyaddr":[
-		{"addr":"127.0.0.1:8020", "weight":100},
-		{"addr":"127.0.0.1:8030", "weight":50}
+		{"addr":"127.0.0.1:8020", "weight":100}
 	],
 	"user":"test",
 	"pwd":"xxx",
-	"timeout":5,
+	"timeout":2,
 	"host":{
 		"black":"D:/GoProj/wcf_proj/src/wcf/cmd/local/black.rule",
 		"no_proxy":"D:/GoProj/wcf_proj/src/wcf/cmd/local/no_proxy.rule"

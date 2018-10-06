@@ -6,6 +6,7 @@ import (
 	"time"
 	"sync"
 	"io"
+	//"github.com/sirupsen/logrus"
 )
 
 func IsDone(ctx context.Context) bool {
@@ -40,9 +41,9 @@ func Pipe(src net.Conn, dst net.Conn,
 			dw += uint64(dstWrite)
 			sre = srcReadErr
 			dwe = dstWriteErr
-			if srcRead == 0 || dstWrite == 0 {
-				return
-			}
+			//if srcRead == 0 || dstWrite == 0 {
+			//	return
+			//}
 			if srcReadErr == nil && dstWriteErr == nil {
 				continue
 			}
@@ -69,17 +70,22 @@ func Pipe(src net.Conn, dst net.Conn,
 			sw += uint64(srcWrite)
 			dre = dstReadErr
 			swe = srcWriteErr
-			if dstRead == 0 || srcWrite == 0 {
-				return
-			}
+			//if dstRead == 0 || srcWrite == 0 {
+			//	return
+			//}
 			if dstReadErr == nil && srcWriteErr == nil {
+				//logrus.Infof("re:%v, we:%v, r:%d, w:%d", dstReadErr, srcWriteErr, dstRead, srcWrite)
 				continue
 			}
+			//logrus.Infof("xre:%v, we:%v, r:%d, w:%d", dstReadErr, srcWriteErr, dstRead, srcWrite)
 			if dstReadErr == io.EOF || srcWriteErr == io.EOF {
 				return
 			} else if err, ok := dstReadErr.(net.Error); ok && err.Timeout() {
 				if IsDone(ctx) {
+					//logrus.Infof("connection not done:conn:%s, err:%v", dst.RemoteAddr(), err)
 					return
+				} else {
+					//logrus.Infof("connection not done, conn:%s, err:%v", dst.RemoteAddr(), err)
 				}
 			} else {
 				return

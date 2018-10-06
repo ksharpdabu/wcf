@@ -4,6 +4,7 @@ import (
 	"net"
 	"mix_layer"
 	"crypto/sha1"
+	"net_utils"
 )
 
 func init() {
@@ -41,11 +42,15 @@ func(this *Xor) Read(b []byte) (n int, err error) {
 	return cnt, err
 }
 
-func(this *Xor) Write(b []byte) (n int, err error) {
+func(this *Xor) Write(b []byte) (int, error) {
 	bf := make([]byte, len(b))
 	copy(bf, b)
 	this.xor(bf)
-	return this.Conn.Write(bf)
+	err := net_utils.SendSpecLen(this.Conn, bf)
+	if err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }
 
 func Wrap(key string, conn net.Conn) (*Xor, error) {

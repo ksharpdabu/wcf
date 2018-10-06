@@ -128,8 +128,11 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
 	wbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
-	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%v, bwe:%v, pre:%v, pwe:%v",
+	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)
+	if sr != dw || dr != sw {
+		logger.Errorf("Data transfer error, br:%d, bw:%d, pr:%d, pw:%d", sr, sw, dr, dw)
+	}
 }
 
 func(this *LocalClient) Start() error {
