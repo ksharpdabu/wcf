@@ -2,6 +2,7 @@
 代理工具, 支持socks代理, http代理, 流量中转, 以前用shadowsocks的时候总是需要用其他工具才能生成http代理, 所以这次写这个东西, 直接加入http代理支持。
 
 ## 编译方式
+**简单点可以使用wcf目录下的build.bat进行编译, 缺少的依赖项需要自己手动go get获取。**
 ```shell
 git clone https://github.com/xxxsen/wcf.git
 #进到工程根目录(bin, pkg, src所在的目录为根目录)
