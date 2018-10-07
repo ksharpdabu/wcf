@@ -31,10 +31,14 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	}
 	host, err := check.NewRule(cli.config.Host)
 	if err != nil {
-		log.Errorf("load rule fail, may has err, err:%v, host:%s", err, cli.config.Host)
-		return nil
+		log.Errorf("load rule fail, err:%v, host:%s", err, cli.config.Host)
+		cli.host, err = check.NewRule("")
+		if err != nil {
+			panic("new rule fail")
+		}
+	} else {
+		cli.host = host
 	}
-	cli.host = host
 	return cli
 }
 
