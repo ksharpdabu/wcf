@@ -1,2 +1,6 @@
 127.0.0.0/8,direct
 baidu.com,block
+192.168.0.0/16,direct
+10.0.0.0/8,direct
+172.0.0.0/8,direct
+solidot.org,direct

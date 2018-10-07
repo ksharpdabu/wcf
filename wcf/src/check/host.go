@@ -133,18 +133,26 @@ func(this *Rule) GetHostRule(addr string) *RouteInfo {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	ip := net.ParseIP(addr)
-	if ip == nil { //domain
-		for {
-			if v, ok := this.domain[addr]; ok {
-				return v
+	for {
+		if ip == nil {
+			tmpaddr := addr
+			for {
+				if v, ok := this.domain[tmpaddr]; ok {
+					return v
+				}
+				index := strings.Index(tmpaddr, ".")
+				if index < 0 {
+					break
+				}
+				tmpaddr = tmpaddr[index + 1:]
 			}
-			index := strings.Index(addr, ".")
-			if index < 0 {
+			newip, err := net.ResolveIPAddr("ip", addr)
+			if err != nil {
+				log.Errorf("Resolve ip addr err, domain addr:%s, err:%v", addr, err)
 				break
 			}
-			addr = addr[index + 1:]
+			ip = newip.IP
 		}
-	} else { //v4
 		if v, ok :=this.domain[addr]; ok {
 			return v
 		}
@@ -153,6 +161,7 @@ func(this *Rule) GetHostRule(addr string) *RouteInfo {
 				return v
 			}
 		}
+		break
 	}
 	return defaultInfo
 }

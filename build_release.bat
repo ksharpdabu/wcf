@@ -1,8 +1,8 @@
 @echo off 
-set  cur=%cd%
+set  root_dir=%cd%
 cd wcf 
-build.bat
-cd %cur%
+call build.bat
+cd %root_dir%
 wsl rm releases -rf
 wsl mkdir releases
 wsl tar -czf ./releases/local-releases_`date +%%Y_%%m_%%d_%%H_%%M_%%S`.tar.gz wcf/src/wcf/cmd/local/local_*
