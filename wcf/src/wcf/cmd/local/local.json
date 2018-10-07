@@ -15,10 +15,7 @@
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":2,
-	"host":{
-		"black":"D:/GoProj/wcf_proj/src/wcf/cmd/local/black.rule",
-		"no_proxy":"D:/GoProj/wcf_proj/src/wcf/cmd/local/no_proxy.rule"
-	},
+	"host":"D:/GoProj/wcf/wcf/src/wcf/cmd/local/host.rule",
 	"encrypt":"xor",
 	"key":"hellotest"
 }

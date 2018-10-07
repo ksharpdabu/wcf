@@ -34,6 +34,7 @@ type ReloadInfo struct {
 	lf LoadFinishFunc
 	file string
 	cmParam interface{}
+	wg *sync.WaitGroup
 }
 
 type AutoReload struct {
@@ -74,6 +75,10 @@ func(this *AutoReload) Start() {
 					if err == nil {
 						info.cmParam = param
 					}
+					if info.wg != nil {
+						info.wg.Done()
+						info.wg = nil
+					}
 				}
 			}
 			this.mu.Unlock()
@@ -93,28 +98,32 @@ func(this *AutoReload) SetDuration(ts time.Duration) {
 	this.duration = ts
 }
 
-func(this *AutoReload) AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) error {
+func(this *AutoReload) AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	if _, ok := this.store[file]; ok {
-		return errors.New("file already exists, skip")
+		return errors.New("file already exists, skip"), nil
 	}
-	this.store[file] = &ReloadInfo{cm, dl, lf, file, nil}
-	return nil
+	ri := &ReloadInfo{cm, dl, lf, file, nil, &sync.WaitGroup{}}
+	ri.wg.Add(1)
+	this.store[file] = ri
+	return nil, ri.wg
 }
 
-func(this *AutoReload) AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) error {
+func(this *AutoReload) AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	this.pmu.Lock()
 	defer this.pmu.Unlock()
-	this.peeding = append(this.peeding, &ReloadInfo{cm, dl, lf, file, nil})
-	return nil
+	ri := &ReloadInfo{cm, dl, lf, file, nil, &sync.WaitGroup{}}
+	ri.wg.Add(1)
+	this.peeding = append(this.peeding, ri)
+	return nil, ri.wg
 }
 
-func AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) error {
+func AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	return defaultLoader.AddLoadSync(cm, dl, lf, file)
 
 }
 
-func AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) error {
+func AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	return defaultLoader.AddLoad(cm, dl, lf, file)
 }

@@ -35,5 +35,8 @@ func main() {
 	}
 	log.Printf("Config:%+v", cfg)
 	cli := wcf.NewClient(cfg)
+	if cli == nil {
+		panic("could not create wcf local")
+	}
 	cli.Start()
 }

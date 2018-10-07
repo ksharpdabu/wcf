@@ -4,5 +4,5 @@
 	"userinfo":"D:/GoProj/wcf/wcf/src/wcf/cmd/server/userinfo.dat",
 	"encrypt":"xor",
 	"key":"hellotest",
-	"secure_check":true
+	"host":"D:/GoProj/wcf/wcf/src/wcf/cmd/server/host.rule"
 }

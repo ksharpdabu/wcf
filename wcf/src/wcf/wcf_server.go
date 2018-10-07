@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"proxy"
 	"net_utils"
+	"check"
 )
 
 type RemoteServer struct {
 	config *ServerConfig
 	acceptor *relay.RelayAcceptor
 	userinfo *UserHolder
+	host *check.Rule
 }
 
 func NewServer(config *ServerConfig) *RemoteServer {
@@ -27,55 +29,13 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	} else {
 		cli.userinfo = ui
 	}
+	host, err := check.NewRule(cli.config.Host)
+	if err != nil {
+		log.Errorf("load rule fail, may has err, err:%v, host:%s", err, cli.config.Host)
+		return nil
+	}
+	cli.host = host
 	return cli
-}
-
-func(this *RemoteServer) isInnerIP(ip net.IP) bool {
-	if ip.IsLoopback() {
-		return true
-	}
-	if v := ip.To4(); v != nil { //CHECK V4
-		if (v[0] == 10) {
-			return true
-		} else if (v[0] == 172 && v[1] > 15 && v[1] < 32) {
-			return true
-		} else if (v[0] == 192 && v[1] == 168) {
-			return true
-		}
-
-	} else { //CHECK V6
-
-	}
-	return false
-}
-
-func(this *RemoteServer) secureCheck(name string, port uint32) bool {
-	ip := net.ParseIP(name)
-	var lst []net.IP
-	if ip == nil {
-		ns, err := net.LookupHost(name)
-		if err != nil {
-			log.Errorf("Resolve ip address fail, err:%v, name:%s, pass", err, name)
-			return true
-		}
-		for _, item := range ns {
-			v := net.ParseIP(item)
-			if v != nil {
-				lst = append(lst, v)
-			} else {
-				log.Errorf("Resolve ip but can not parse, ip:%s, name:%s, err:$v", item, name, err)
-				return false
-			}
-		}
-	} else {
-		lst = append(lst, ip)
-	}
-	for _, ip := range lst {
-		if this.isInnerIP(ip) {
-			return false
-		}
-	}
-	return true
 }
 
 func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
@@ -100,12 +60,14 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 
 	} else { //default proxy
 		address = fmt.Sprintf("%s:%d", conn.GetTargetName(), conn.GetTargetPort())
-		if this.config.EnableSecureCheck {
-			if !this.secureCheck(conn.GetTargetName(), conn.GetTargetPort()) {
-				logger.Errorf("User:%s use addr:%s:%d could not pass secure check.", conn.GetUser(), conn.GetTargetName(), conn.GetTargetPort())
-				conn.Close()
-				return
-			}
+		vinfo := this.host.GetHostRule(conn.GetTargetName())
+		if vinfo.HostRule == check.RULE_BLOCK {
+			logger.Errorf("User:%s visit site:%s not allow, skip", conn.GetUser(), conn.GetTargetName())
+			conn.Close()
+			return
+		}
+		if len(vinfo.NewHostValue) != 0 { //vinfo.NewHostValue must be domain or ip, could not be cidr!!!!!!!
+			address = fmt.Sprintf("%s:%d", vinfo.NewHostValue, conn.GetTargetPort())
 		}
 	}
 	remote, err = net.DialTimeout("tcp", address, this.config.Timeout)

@@ -16,31 +16,22 @@ import (
 
 type LocalClient struct {
 	config *LocalConfig
-	noProxy *check.Host
-	black *check.Host
+	rule *check.Rule
 	lb *lb.LoadBalance
 }
 
 func NewClient(config *LocalConfig) *LocalClient {
 	cli := &LocalClient{}
 	cli.config = config
-	if len(cli.config.Host.BlackHost) != 0 {
-		blk, err := check.NewRule(cli.config.Host.BlackHost)
+	rule, err := check.NewRule(cli.config.Host)
+	if err != nil {
+		log.Errorf("Load host rule fail, err:%v, file:%s", err, cli.config.Host)
+		cli.rule, err = check.NewRule("")
 		if err != nil {
-			log.Errorf("Load black host fail, err:%v, file:%s", err, cli.config.Host.BlackHost)
-			cli.black, _ = check.NewRule("")
-		} else {
-			cli.black = blk
+			panic("new rule fail")
 		}
-	}
-	if len(cli.config.Host.NoProxyHost) != 0 {
-		nop, err := check.NewRule(cli.config.Host.NoProxyHost)
-		if err != nil {
-			log.Errorf("Load no proxy host fail, err:%v, file:%s", err, cli.config.Host.NoProxyHost)
-			cli.noProxy, _ = check.NewRule("")
-		} else {
-			cli.noProxy = nop
-		}
+	} else {
+		cli.rule = rule
 	}
 	cli.lb = lb.New(cli.config.Lbinfo.MaxErrCnt, cli.config.Lbinfo.MaxFailTime)
 	for _, v := range cli.config.Proxyaddr {
@@ -80,7 +71,8 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var err error
 	var connAddr string
 	needUpdate := false
-	if !this.noProxy.IsSubExists(conn.GetTargetName()) {
+	vinfo := this.rule.GetHostRule(conn.GetTargetName())
+	if vinfo.HostRule == check.RULE_PROXY {
 		newConnAddr, err := this.lb.Get()
 		if err != nil {
 			logger.Errorf("Get balance ip fail, err:%v, conn:%s", err, conn.RemoteAddr())
@@ -110,18 +102,20 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		remote.Close()
 	}()
 	var token uint32 = 0
-	newConn, err := mix_layer.Wrap(this.config.Encrypt, this.config.Key, remote)
-	if err != nil {
-		logger.Errorf("Wrap connection with mix method:%s fail, err:%v, conn:%s", this.config.Encrypt, err, remote.RemoteAddr())
-		return
-	} else {
-		newWrapConn, err := relay.WrapConnection(newConn, cfg)
+	if vinfo.HostRule == check.RULE_PROXY {  //only proxy mode should wrap this layer
+		newConn, err := mix_layer.Wrap(this.config.Encrypt, this.config.Key, remote)
 		if err != nil {
-			logger.Errorf("Wrap connection with relay method fail, err:%v, conn:%s", err, newConn.RemoteAddr())
+			logger.Errorf("Wrap connection with mix method:%s fail, err:%v, conn:%s", this.config.Encrypt, err, remote.RemoteAddr())
 			return
+		} else {
+			newWrapConn, err := relay.WrapConnection(newConn, cfg)
+			if err != nil {
+				logger.Errorf("Wrap connection with relay method fail, err:%v, conn:%s", err, newConn.RemoteAddr())
+				return
+			}
+			remote = newWrapConn
+			token = newWrapConn.GetToken()
 		}
-		remote = newWrapConn
-		token = newWrapConn.GetToken()
 	}
 	logger.Infof("Connect to proxy svr success, target:%s, token:%d", remote.RemoteAddr(), token)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -147,7 +141,15 @@ func(this *LocalClient) Start() error {
 			continue
 		}
 		acceptor.AddHostHook(func(addr string, port uint16, addrType int) (bool, string, uint16, int) {
-			return !this.black.IsSubExists(addr), addr, port, addrType
+			vinfo := this.rule.GetHostRule(addr)
+			rewrite := addr
+			if len(vinfo.NewHostValue) != 0 {
+				rewrite = vinfo.NewHostValue
+			}
+			if vinfo.HostRule == check.RULE_BLOCK {
+				return false, rewrite, port, addrType
+			}
+			return true, rewrite, port, addrType
 		})
 		go func(netw string, acc proxy.ProxyListener, addr string) {
 			defer func() {

@@ -15,10 +15,146 @@ import (
 	"fmt"
 )
 
-type Host struct {
+const (
+	RULE_BLOCK = 0
+	RULE_DIRECT = 1
+	RULE_PROXY = 2
+)
+
+type RouteInfo struct {
+	HostRule    int
+	NewHostValue   string
+}
+
+var defaultInfo = &RouteInfo{ RULE_PROXY, "" }
+
+type Rule struct {
 	file string
-	mp map[string]bool
+	domain map[string]*RouteInfo
+	cidr map[*net.IPNet]*RouteInfo
 	mu sync.RWMutex
+}
+
+func NewRule(file string) (*Rule, error) {
+	r := &Rule{file:file, domain:make(map[string]*RouteInfo), cidr:make(map[*net.IPNet]*RouteInfo)}
+	if len(file) == 0 {
+		return r, nil
+	}
+	_, err := os.Stat(file)
+	if err != nil {
+		return nil, err
+	}
+	rd := reload.New()
+	err, wg := rd.AddLoad(
+		func(addr string, v interface{}) (bool, interface{}) {
+			return reload.DefaultFileCheckModFunc(addr, v)
+		},
+		func(addr string) (interface{}, error) {
+			file, err := os.Open(addr)
+			if err != nil {
+				log.Errorf("Open file:%s fail, err:%v", addr, err)
+				return nil, err
+			}
+			defer func() {
+				file.Close()
+			}()
+			r := bufio.NewReader(file)
+			tmp := make(map[string]interface{})
+			domain := make(map[string]*RouteInfo)
+			cidr := make(map[*net.IPNet]*RouteInfo)
+			tmp["domain"] = domain
+			tmp["cidr"] = cidr
+			for {
+				bline, _, err := r.ReadLine()
+				if err == io.EOF {
+					break
+				}
+				line := strings.ToLower(strings.Trim(string(bline), "\t \n\r"))
+				if strings.HasPrefix(line, "#") || len(line) == 0 {
+					continue
+				}
+				sp := strings.Split(line, ",")
+				if len(sp) < 2 {
+					log.Errorf("Invalid rule line:%s, format should like this `domain,op_type[,replace host]`", line)
+					continue
+				}
+				addr := sp[0]
+				op := 0
+				extra := ""
+				switch sp[1] {
+				case "proxy":
+					op = RULE_PROXY
+					break
+				case "direct":
+					op = RULE_DIRECT
+					break
+				case "block":
+					op = RULE_BLOCK
+					break
+				}
+				if len(sp) == 3 {
+					extra = sp[2]
+				}
+				rt := &RouteInfo{HostRule:op, NewHostValue:extra}
+				if strings.Contains(addr, "/") { //cidr
+					_, cidritem, err := net.ParseCIDR(addr)
+					if err != nil {
+						log.Errorf("Parse cidr fail, err:%v, addr:%s, line:%s", err, addr, line)
+						continue
+					}
+					cidr[cidritem] = rt
+				} else { //ip
+					domain[addr] = rt
+				}
+			}
+			return tmp, nil
+		},
+		func(addr string, result interface{}, err error) {
+			if err == nil {
+				r.mu.Lock()
+				defer r.mu.Unlock()
+				mp := result.(map[string]interface{})
+				r.domain = mp["domain"].(map[string]*RouteInfo)
+				r.cidr = mp["cidr"].(map[*net.IPNet]*RouteInfo)
+			}
+			log.Infof("Reload host from file:%s, success, domain:%d, cidr:%d", addr, len(r.domain), len(r.cidr))
+		},
+		file,
+	)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("add host reload item fail, err:%v", err))
+	}
+	rd.Start()
+	wg.Wait()
+	return r, nil
+}
+
+func(this *Rule) GetHostRule(addr string) *RouteInfo {
+	this.mu.RLock()
+	defer this.mu.RUnlock()
+	ip := net.ParseIP(addr)
+	if ip == nil { //domain
+		for {
+			if v, ok := this.domain[addr]; ok {
+				return v
+			}
+			index := strings.Index(addr, ".")
+			if index < 0 {
+				break
+			}
+			addr = addr[index + 1:]
+		}
+	} else { //v4
+		if v, ok :=this.domain[addr]; ok {
+			return v
+		}
+		for k, v := range this.cidr {
+			if k.Contains(ip){
+				return v
+			}
+		}
+	}
+	return defaultInfo
 }
 
 //schema, domain, port
@@ -52,118 +188,4 @@ func GetUrlInfo(req string) (error, string, string, int) {
 		}
 	}
 	return nil, schema, host, port
-}
-
-func NewRule(file string) (*Host, error) {
-	r := &Host{file:file, mp:make(map[string]bool)}
-	if len(file) == 0 {
-		return r, nil
-	}
-	_, err := os.Stat(file)
-	if err != nil {
-		return nil, err
-	}
-	reload.AddLoad(
-		func(addr string, v interface{}) (bool, interface{}) {
-			return reload.DefaultFileCheckModFunc(addr, v)
-		},
-		func(addr string) (interface{}, error) {
-			file, err := os.Open(addr)
-			if err != nil {
-				log.Errorf("Open file:%s fail, err:%v", addr, err)
-				return nil, err
-			}
-			defer func() {
-				file.Close()
-			}()
-			r := bufio.NewReader(file)
-			tmp := make(map[string]bool)
-			for {
-				line, _, err := r.ReadLine()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					log.Errorf("Read line from file:%s fail, err:%s", addr, err)
-					return nil, err
-				}
-				log.Debugf("Read host:%s from file", string(line))
-				tmp[string(line)] = true
-			}
-			return tmp, nil
-		},
-		func(addr string, result interface{}, err error) {
-			if err == nil {
-				r.mu.Lock()
-				defer r.mu.Unlock()
-				r.mp = result.(map[string]bool)
-			}
-			log.Infof("Reload host from file:%s, success, size:%d", addr, len(result.(map[string]bool)))
-		},
-		file,
-	)
-	return r, nil
-}
-
-func IsIP(url string) bool {
-	ip := net.ParseIP(url)
-	return ip != nil
-}
-
-func GetRootDomain(url string) string {
-	reg := regexp.MustCompile("[0-9A-Za-z]+\\.[a-zA-Z]+$")
-	lst := reg.FindAllString(url, -1)
-	if len(lst) == 1 {
-		 return lst[0]
-	}
-	return url
-}
-
-func GetAllSubDomainPoint(url string) []int {
-	if IsIP(url) {
-		return []int {0}
-	}
-	var pt []int
-	cnt := 10
-	first := true
-	for i := len(url) - 1; i > 0 && cnt > 0; i-- {
-		if url[i] == '.' {
-			cnt--
-			if first == true {
-				first = false
-				continue
-			}
-			pt = append(pt, i + 1)
-		}
-	}
-	pt = append(pt, 0)
-	return pt
-}
-
-func BuildSubDomainByPoint(url string, pt []int) []string {
-	ret := make([]string, len(pt))
-	for i := 0; i < len(pt); i++ {
-		ret[i] = url[pt[i]:]
-	}
-	return ret
-}
-
-func(this *Host) IsSubExists(url string) bool {
-	if IsIP(url) {
-		return this.IsExists(url)
-	}
-	pts := GetAllSubDomainPoint(url)
-	for _, pt := range pts {
-		if this.IsExists(url[pt:]) {
-			return true
-		}
-	}
-	return false
-}
-
-func(this *Host) IsExists(url string) bool {
-	this.mu.RLock()
-	defer this.mu.RUnlock()
-	_, ok := this.mp[url]
-	return ok
 }

@@ -29,5 +29,8 @@ func main() {
 	}
 	log.Printf("Config:%+v", cfg)
 	cli := wcf.NewServer(cfg)
+	if cli == nil {
+		panic("could not create wcf server")
+	}
 	cli.Start()
 }

@@ -62,7 +62,8 @@ func NewUserHolder(file string) (*UserHolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	reload.AddLoad(
+	rd := reload.New()
+	err, gp := rd.AddLoad(
 		func(addr string, v interface{}) (bool, interface{}) {
 			return reload.DefaultFileCheckModFunc(addr, v)
 		},
@@ -95,6 +96,11 @@ func NewUserHolder(file string) (*UserHolder, error) {
 		},
 		file,
 	)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("add reload item fail, err:%v", err))
+	}
+	rd.Start()
+	gp.Wait()
 	return r, nil
 }
 

@@ -1,0 +1,3 @@
+127.0.0.0/8,direct
+baidu.com,block
+solidot.org,direct,127.0.0.1
