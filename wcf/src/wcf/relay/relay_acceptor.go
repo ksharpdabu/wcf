@@ -12,6 +12,8 @@ import (
 	"math/rand"
 	"time"
 	"mix_layer"
+	"strings"
+	"github.com/xtaci/kcp-go"
 )
 
 const MAX_BYTE_AUTH_PACKET uint32 = 128
@@ -80,8 +82,15 @@ func newRelayAcceptor() *RelayAcceptor {
 	return &RelayAcceptor{connectionList:make(chan *connrecv, 5)}
 }
 
-func Bind(address string) (*RelayAcceptor, error) {
-	listener, err := net.Listen("tcp", address)
+func Bind(protocol string, address string) (*RelayAcceptor, error) {
+	protocol = strings.ToLower(protocol)
+	var listener net.Listener
+	var err error
+	if protocol == "kcp" {
+		listener, err = kcp.ListenWithOptions(address, nil, 10, 3)
+	} else {
+		listener, err = net.Listen(protocol, address)
+	}
 	if err != nil {
 		return nil, err
 	}

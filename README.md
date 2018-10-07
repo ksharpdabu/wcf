@@ -35,8 +35,8 @@ go build
 		"max_failtime":30
 	},	
 	"proxyaddr":[
-		{"addr":"127.0.0.1:8020", "weight":100},
-		{"addr":"127.0.0.1:8030", "weight":50}
+		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"},
+		{"addr":"127.0.0.1:8021", "weight":100, "protocol":"kcp"}
 	],	
 	"user":"test",
 	"pwd":"xxx",
@@ -77,7 +77,7 @@ google.com,proxy
 ### 远程端
 ```json
 {
-	"localaddr":"127.0.0.1:8020",
+	"localaddr":[{"address":"127.0.0.1:8020", "protocol":"tcp"}, {"address":"127.0.0.1:8021", "protocol":"kcp"}],
 	"timeout":5,
 	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
 	"encrypt":"xor",

@@ -10,7 +10,8 @@
 		"max_failtime":30
 	},
 	"proxyaddr":[
-		{"addr":"127.0.0.1:8020", "weight":100}
+		{"addr":"127.0.0.1:8021", "weight":100, "protocol":"kcp"},
+		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"}
 	],
 	"user":"test",
 	"pwd":"xxx",

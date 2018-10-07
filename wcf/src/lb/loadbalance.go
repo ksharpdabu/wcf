@@ -14,6 +14,7 @@ type LoadItem struct {
 	MarkFail bool
 	Errtime int
 	LastFail time.Time
+	Extra interface{}
 }
 
 type LoadBalance struct {
@@ -50,7 +51,7 @@ func New(maxErrTime int, maxFailTime time.Duration) *LoadBalance {
 	return l
 }
 
-func(this *LoadBalance) Add(addr string, weight int) {
+func(this *LoadBalance) Add(addr string, weight int, extra interface{}) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	item := &LoadItem{}
@@ -58,11 +59,12 @@ func(this *LoadBalance) Add(addr string, weight int) {
 	item.Current = weight
 	item.Errtime = 0
 	item.LastFail = time.Time{}
+	item.Extra = extra
 	item.MarkFail = false
 	this.mp[addr] = item
 }
 
-func(this *LoadBalance) Get() (string, error) {
+func(this *LoadBalance) Get() (string, interface{}, error) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	var total int = 0
@@ -73,7 +75,7 @@ func(this *LoadBalance) Get() (string, error) {
 		total += v.Current
 	}
 	if total <= 0 {
-		return "", errors.New("all ip fail")
+		return "", nil, errors.New("all ip fail")
 	}
 	rnd := this.rnd.Intn(total)
 	for k, v := range this.mp {
@@ -85,7 +87,7 @@ func(this *LoadBalance) Get() (string, error) {
 			if v.Current > v.Base / 2 {
 				v.Current--
 			}
-			return k, nil
+			return k, v.Extra, nil
 		}
 	}
 	panic("should not reach here..")

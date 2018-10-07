@@ -20,6 +20,7 @@ type LoadBalanceInfo struct {
 type ProxyAddrInfo struct {
 	Addr   string `json:"addr"`
 	Weight int    `json:"weight"`
+	Protocol string `json:"protocol"`
 }
 
 type LocalConfig struct {

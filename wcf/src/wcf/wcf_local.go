@@ -12,6 +12,8 @@ import (
 	"proxy"
 	"net_utils"
 	"lb"
+	"time"
+	"github.com/xtaci/kcp-go"
 )
 
 type LocalClient struct {
@@ -36,7 +38,7 @@ func NewClient(config *LocalConfig) *LocalClient {
 	cli.lb = lb.New(cli.config.Lbinfo.MaxErrCnt, cli.config.Lbinfo.MaxFailTime)
 	for _, v := range cli.config.Proxyaddr {
 		log.Infof("Add addr:%s weight:%d to load balance", v.Addr, v.Weight)
-		cli.lb.Add(v.Addr, v.Weight)
+		cli.lb.Add(v.Addr, v.Weight, v.Protocol)
 	}
 	return cli
 }
@@ -49,6 +51,8 @@ func isDone(ctx context.Context) bool {
 		return false
 	}
 }
+
+type RemoteDialFunc func(protocol string, addr string, timeout time.Duration) (net.Conn, error)
 
 func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, network string) {
 	logger := log.WithFields(log.Fields{
@@ -70,22 +74,37 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var remote net.Conn
 	var err error
 	var connAddr string
+	var protocol string
+	var dialfunc RemoteDialFunc = net.DialTimeout
 	needUpdate := false
 	vinfo := this.rule.GetHostRule(conn.GetTargetName())
 	if vinfo.HostRule == check.RULE_PROXY {
-		newConnAddr, err := this.lb.Get()
+		newConnAddr, extra, err := this.lb.Get()
 		if err != nil {
 			logger.Errorf("Get balance ip fail, err:%v, conn:%s", err, conn.RemoteAddr())
 			conn.Close()
 			return
 		}
 		connAddr = newConnAddr
-		needUpdate = true
+		if extra != nil {
+			protocol = extra.(string)
+		} else {
+			protocol = "tcp"
+		}
+		if protocol == "kcp" {
+			dialfunc = func(protocol string, addr string, timeout time.Duration) (net.Conn, error) {
+				//no timeout support
+				return kcp.DialWithOptions(addr, nil, 10, 3)
+			}
+		}
+		if this.config.Lbinfo.Enable {
+			needUpdate = true
+		}
 
 	} else {
 		connAddr = conn.GetTargetAddress()
 	}
-	remote, err = net.DialTimeout("tcp", connAddr, this.config.Timeout)
+	remote, err = dialfunc(protocol, connAddr, this.config.Timeout)
 	if needUpdate {
 		if this.config.Lbinfo.Enable {
 			logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
@@ -117,7 +136,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 			token = newWrapConn.GetToken()
 		}
 	}
-	logger.Infof("Connect to proxy svr success, target:%s, token:%d", remote.RemoteAddr(), token)
+	logger.Infof("Connect to proxy svr success, target:%s, token:%d, protocol:%s", remote.RemoteAddr(), token, protocol)
 	ctx, cancel := context.WithCancel(context.Background())
 	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
 	wbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)

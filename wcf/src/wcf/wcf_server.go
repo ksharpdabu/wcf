@@ -10,11 +10,12 @@ import (
 	"proxy"
 	"net_utils"
 	"check"
+	"sync/atomic"
+	"sync"
 )
 
 type RemoteServer struct {
 	config *ServerConfig
-	acceptor *relay.RelayAcceptor
 	userinfo *UserHolder
 	host *check.Rule
 }
@@ -94,31 +95,42 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 }
 
 func(this *RemoteServer) Start() error {
-	acceptor, err := relay.Bind(this.config.Localaddr)
-	if err != nil {
-		log.Errorf("Bind local svr fail, err:%v, local addr:%s", err, this.config.Localaddr)
-		return err
-	}
-	this.acceptor = acceptor
-	this.acceptor.AddMixWrap(func(conn net.Conn) (mix_layer.MixConn, error) {
-		return mix_layer.Wrap(this.config.Encrypt, this.config.Key, conn)
-	})
-	this.acceptor.OnAuth = func(user, pwd string) bool {
-		return this.userinfo.Check(user, pwd)
-	}
-	err = this.acceptor.Start()
-	if err != nil {
-		log.Errorf("Start relay acceptor fail, err:%v", err)
-		return err
-	}
-	var sessionid uint32 = 0
-	for {
-		cli, err := this.acceptor.Accept()
+	var wg sync.WaitGroup
+	wg.Add(len(this.config.Localaddr))
+	for _, v := range this.config.Localaddr {
+		acceptor, err := relay.Bind(v.Protocol, v.Address)
 		if err != nil {
-			log.Errorf("Recv client from remote fail, err:%v, continue", err)
-			continue
+			log.Errorf("Bind local svr fail, err:%v, local addr:%s", err, this.config.Localaddr)
+			return err
 		}
-		sessionid++
-		go this.handleProxy(cli, sessionid)
+		acceptor.AddMixWrap(func(conn net.Conn) (mix_layer.MixConn, error) {
+			return mix_layer.Wrap(this.config.Encrypt, this.config.Key, conn)
+		})
+		acceptor.OnAuth = func(user, pwd string) bool {
+			return this.userinfo.Check(user, pwd)
+		}
+		err = acceptor.Start()
+		if err != nil {
+			log.Errorf("Start relay acceptor fail, protocol:%s, addr:%s, err:%v", v.Protocol, v.Address, err)
+			return err
+		}
+		log.Infof("Start relay acceptor success, protocol:%s, addr:%s", v.Protocol, v.Address)
+		var sessionid uint32 = 0
+		go func() {
+			defer func() {
+				wg.Done()
+			}()
+			for {
+				cli, err := acceptor.Accept()
+				if err != nil {
+					log.Errorf("Recv client from remote fail, err:%v, continue", err)
+					continue
+				}
+				sess := atomic.AddUint32(&sessionid, 1)
+				go this.handleProxy(cli, sess)
+			}
+		}()
 	}
+	wg.Wait()
+	return nil
 }
