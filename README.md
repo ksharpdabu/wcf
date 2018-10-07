@@ -41,10 +41,7 @@ go build
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":5,
-	"host":{
-		"black":"D:/GoProj/wcf_proj/src/wcf/cmd/local/black.rule",
-		"no_proxy":"D:/GoProj/wcf_proj/src/wcf/cmd/local/no_proxy.rule"
-	},
+	"host":"d:/host.rule",
 	"encrypt":"xor",
 	"key":"hellotest"
 }
@@ -58,9 +55,24 @@ go build
 * * weight 权重信息
 * user/pwd 鉴权用的用户名和密码
 * timeout 链接超时时间, 单位是秒
-* host 这个是用来配置本地host的, black为黑名单域名, 在这个文件内的域名都会被reset. no_proxy为不进行代理的域名, 在这个名单内的地址, 会直接在本地进行请求而不走远程server. 这2个的配置方式都是一行一个域名.
+* host 这个是用来配置本地host的, 一行一个配置,由域名, 操作类型, 替换域名(可选)组成, 例如baidu.com,proxy[,google.com], 分3种操作类型,block, proxy, direct, 分别代表黑名单(禁止链接), 走代理, 直连, 具体的可以看下面的配置
 * encrypt 加密方式, 目前只有xor, comp, 想了下, 貌似只要混淆就能FQ, 所以就只搞了这2种
 * key 加密的key
+
+#### host配置
+```host.rule 
+#一行一个配置, 井号开头的为注释
+#可以只配置域名,操作类型, 也可以配置替换域名
+#支持cidr,server端请务必将内网的地址给block掉, 不然会有安全风险
+#替换的域名只能是域名或者ip, 不能为cidr
+#配置的域名不只影响自身, 还会影响其子域名
+#如下面的几行
+127.0.0.0/8,direct
+192.168.0.0/16,direct
+baidu.com,block
+www.test.com,direct,127.0.0.1
+google.com,proxy
+```
 
 ### 远程端
 ```json
@@ -70,14 +82,14 @@ go build
 	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
 	"encrypt":"xor",
 	"key":"hellotest",
-	"secure_check":true
+	"host":"d:/host.rule"
 }
 ```
 * localaddr 本地监听地址, 这里是服务端的监听地址, 如果要公网使用, 这里要填为0.0.0.0:8020
 * timeout 链接超时时间, 单位为秒
 * userinfo 用户配置文件, 下面说明
 * encrypt/key 加密方式与加密key, 需要保持与客户端一致
-* secure_check 安全检查, 目前只做了简单的内网ip检查
+* host 同client配置
 
 #### 用户配置信息说明
 以json line方式进行配置, 一行一个用户。
