@@ -4,7 +4,6 @@ import (
 	"net"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 )
 
@@ -47,7 +46,6 @@ type BindFunc func(string) (ProxyListener, error)
 type DialFunc func(addr string, proxy string, timeout time.Duration) (net.Conn, error)
 
 type bindst struct {
-	mu sync.RWMutex
 	mp map[string]BindFunc
 }
 
@@ -62,14 +60,10 @@ func init() {
 }
 
 func Regist(network string, fun BindFunc) {
-	bt.mu.Lock()
-	defer bt.mu.Unlock()
 	bt.mp[network] = fun
 }
 
 func Bind(network string, addr string) (ProxyListener, error) {
-	bt.mu.RLock()
-	defer bt.mu.RUnlock()
 	if v, ok := bt.mp[network]; ok {
 		return v(addr)
 	}
@@ -77,19 +71,14 @@ func Bind(network string, addr string) (ProxyListener, error) {
 }
 
 type dialst struct {
-	mu sync.RWMutex
 	mp map[string]DialFunc
 }
 
 func RegistClient(network string, fun DialFunc) {
-	dt.mu.Lock()
-	defer dt.mu.Unlock()
 	dt.mp[network] = fun
 }
 
 func DialTimeout(network string, addr string, proxy string, timeout time.Duration) (net.Conn, error) {
-	dt.mu.RLock()
-	defer dt.mu.RUnlock()
 	if v, ok := dt.mp[network]; ok {
 		return v(addr, proxy, timeout)
 	}
