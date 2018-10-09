@@ -8,6 +8,7 @@ import (
 )
 
 //一个简易的负载均衡组件, 实现的比较挫, 考虑到每秒建立连接数的数量非常地低, 所以这个工具还是勉强能用的=.=
+//最小的权重值只能为1.。。
 type LoadItem struct {
 	Current int
 	Base int
@@ -34,7 +35,7 @@ func(this *LoadBalance) autoScan() {
 					v.MarkFail = false
 					v.LastFail = time.Time{}
 					v.Errtime = 0
-					v.Current = v.Base / 2
+					v.Current = v.Base / 2 + 1
 				}
 			}
 		}
@@ -57,6 +58,9 @@ func(this *LoadBalance) Add(addr string, weight int, extra interface{}) {
 	item := &LoadItem{}
 	item.Base = weight
 	item.Current = weight
+	if item.Current <= 0 {
+		item.Current = 1
+	}
 	item.Errtime = 0
 	item.LastFail = time.Time{}
 	item.Extra = extra
@@ -87,6 +91,9 @@ func(this *LoadBalance) Get() (string, interface{}, error) {
 			if v.Current > v.Base / 2 {
 				v.Current--
 			}
+			if v.Current <= 0 {
+				v.Current = 1
+			}
 			return k, v.Extra, nil
 		}
 	}
@@ -101,10 +108,10 @@ func(this *LoadBalance) Update(addr string, result bool) {
 		if result {
 			if v.MarkFail {
 				v.MarkFail = false
-				v.Current += v.Base / 5
+				v.Current += v.Base / 5 + 1
 			} else {
 				if v.Current <= v.Base / 2 {
-					v.Current += v.Base / 5
+					v.Current += v.Base / 5 + 1
 				} else {
 					v.Current++
 				}
@@ -125,7 +132,7 @@ func(this *LoadBalance) Update(addr string, result bool) {
 		}
 		v.Current = v.Current / 2 - v.Base / 10
 		if v.Current <= 0 {
-			v.Current = v.Base / 10
+			v.Current = v.Base / 10 + 1
 		}
 		return
 	}
