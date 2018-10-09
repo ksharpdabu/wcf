@@ -1,0 +1,23 @@
+{
+	"_":{"note":"每个协议一个map, map内包含bind, dial 2个函数所需要的数据, 服务加载的时候会自动解析"},
+	"tcp":{},
+	"kcp":{
+		"bind":{
+			"data_shards":10,
+			"parity_shards":3
+		},
+		"dial":{
+			"data_shards":10,
+			"parity_shards":3
+		}
+	},
+	"tcp_tls":{
+		"bind":{
+			"pem_file":"./server.pem",
+			"key_file":"./server.key"
+		},
+		"dial":{
+			"skip_insecure":false
+		}
+	}
+}
