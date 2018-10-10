@@ -35,15 +35,15 @@ go build
 		"max_failtime":30
 	},	
 	"proxyaddr":[
-		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"},
-		{"addr":"127.0.0.1:8021", "weight":100, "protocol":"kcp"}
+		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"}
 	],	
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":5,
 	"host":"d:/host.rule",
 	"encrypt":"xor",
-	"key":"hellotest"
+	"key":"hellotest",
+    "transport":"d:/transport.json"
 }
 ```
 * localaddr 为本地监听的地址, 目前支持3种代理, socks5, http, forward(透传)
@@ -53,11 +53,13 @@ go build
 * proxyaddr 为远程server的地址, 及其权重信息
 * * addr 远程服务器地址
 * * weight 权重信息
+* * protocol 使用的协议
 * user/pwd 鉴权用的用户名和密码
 * timeout 链接超时时间, 单位是秒
 * host 这个是用来配置本地host的, 一行一个配置,由域名, 操作类型, 替换域名(可选)组成, 例如baidu.com,proxy[,google.com], 分3种操作类型,block, proxy, direct, 分别代表黑名单(禁止链接), 走代理, 直连, 具体的可以看下面的配置
 * encrypt 加密方式, 目前只有xor, comp, 想了下, 貌似只要混淆就能FQ, 所以就只搞了这2种
 * key 加密的key
+* transport 协议配置
 
 #### host配置
 ```host.rule 
@@ -82,7 +84,8 @@ google.com,proxy
 	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
 	"encrypt":"xor",
 	"key":"hellotest",
-	"host":"d:/host.rule"
+	"host":"d:/host.rule",
+    "transport":"d:/transport.json"
 }
 ```
 * localaddr 本地监听地址, 这里是服务端的监听地址, 如果要公网使用, 这里要填为0.0.0.0:8020
@@ -90,6 +93,7 @@ google.com,proxy
 * userinfo 用户配置文件, 下面说明
 * encrypt/key 加密方式与加密key, 需要保持与客户端一致
 * host 同client配置
+* transport 协议配置
 
 #### 用户配置信息说明
 以json line方式进行配置, 一行一个用户。
