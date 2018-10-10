@@ -79,6 +79,9 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	}
 	now := time.Now()
 	remote, err = net.DialTimeout("tcp", address, this.config.Timeout)
+	if err != nil {
+		remote, err = net.DialTimeout("tcp", address, this.config.Timeout / 2)
+	}
 	cost := time.Now().Sub(now) / time.Millisecond
 	if err != nil {
 		conn.Close()
