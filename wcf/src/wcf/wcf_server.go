@@ -12,6 +12,8 @@ import (
 	"check"
 	"sync/atomic"
 	"sync"
+	"transport"
+	"time"
 )
 
 type RemoteServer struct {
@@ -75,13 +77,15 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 			address = fmt.Sprintf("%s:%d", vinfo.NewHostValue, conn.GetTargetPort())
 		}
 	}
+	now := time.Now()
 	remote, err = net.DialTimeout("tcp", address, this.config.Timeout)
+	cost := time.Now().Sub(now) / time.Millisecond
 	if err != nil {
 		conn.Close()
-		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s", err, address, conn.RemoteAddr())
+		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%d", err, address, conn.RemoteAddr(), cost)
 		return
 	}
-	logger.Infof("Connect to remote svr success, target:%s", remote.RemoteAddr())
+	logger.Infof("Connect to remote svr success, target:%s, cost:%d", remote.RemoteAddr(),cost)
 	defer func() {
 		conn.Close()
 		remote.Close()
@@ -98,9 +102,14 @@ func(this *RemoteServer) Start() error {
 	var wg sync.WaitGroup
 	wg.Add(len(this.config.Localaddr))
 	for _, v := range this.config.Localaddr {
-		acceptor, err := relay.Bind(v.Protocol, v.Address)
+		binder, err := transport.Bind(v.Protocol, v.Address)
 		if err != nil {
-			log.Errorf("Bind local svr fail, err:%v, local addr:%s", err, this.config.Localaddr)
+			log.Errorf("Bind local svr fail, err:%v, local addr:%s, protocol:%s", err, v.Address, v.Protocol)
+			return err
+		}
+		acceptor, err := relay.WrapListener(binder)
+		if err != nil {
+			log.Errorf("Relay wrap listener fail, err:%v, protocol:%s, localaddr:%s", err, v.Protocol, v.Address)
 			return err
 		}
 		acceptor.AddMixWrap(func(conn net.Conn) (mix_layer.MixConn, error) {

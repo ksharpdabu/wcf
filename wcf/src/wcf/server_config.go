@@ -20,6 +20,7 @@ type ServerConfig struct {
 	Encrypt   string        `json:"encrypt"`
 	Key       string        `json:"key"`
 	Host      string        `json:"host"`
+	TransportConfig string  `json:"transport"`
 }
 
 func NewServerConfig() *ServerConfig {

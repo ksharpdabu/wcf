@@ -13,9 +13,10 @@ import (
 	_ "mix_layer"
 	_ "mix_layer/comp"
 	_ "mix_layer/xor"
+	"transport"
 )
 
-var config *string = flag.String("config", "d:/GoProj/wcf_proj/src/wcf/cmd/local/local.json", "config file")
+var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/local.json", "config file")
 
 func main() {
 	customFormatter := new(log.TextFormatter)
@@ -33,6 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read config fail, err:%v, config:%s", err, *config)
 	}
+	transport.InitAllProtocol(cfg.TransportConfig)
 	log.Printf("Config:%+v", cfg)
 	cli := wcf.NewClient(cfg)
 	if cli == nil {

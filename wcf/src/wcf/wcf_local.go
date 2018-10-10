@@ -13,7 +13,7 @@ import (
 	"net_utils"
 	"lb"
 	"time"
-	"github.com/xtaci/kcp-go"
+	"transport"
 )
 
 type LocalClient struct {
@@ -55,6 +55,9 @@ func isDone(ctx context.Context) bool {
 type RemoteDialFunc func(protocol string, addr string, timeout time.Duration) (net.Conn, error)
 
 func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, network string) {
+	defer func() {
+		conn.Close()
+	}()
 	logger := log.WithFields(log.Fields{
 		"local": conn.RemoteAddr(),
 		"remote": conn.GetTargetAddress(),
@@ -75,49 +78,31 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var err error
 	var connAddr string
 	var protocol string
-	var dialfunc RemoteDialFunc = net.DialTimeout
-	needUpdate := false
 	vinfo := this.rule.GetHostRule(conn.GetTargetName())
 	if vinfo.HostRule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
+		protocol = extra.(string)
 		if err != nil {
 			logger.Errorf("Get balance ip fail, err:%v, conn:%s", err, conn.RemoteAddr())
-			conn.Close()
 			return
 		}
 		connAddr = newConnAddr
-		if extra != nil {
-			protocol = extra.(string)
-		} else {
-			protocol = "tcp"
-		}
-		if protocol == "kcp" {
-			dialfunc = func(protocol string, addr string, timeout time.Duration) (net.Conn, error) {
-				//no timeout support
-				return kcp.DialWithOptions(addr, nil, 10, 3)
-			}
-		}
-		if this.config.Lbinfo.Enable {
-			needUpdate = true
-		}
-
 	} else {
 		connAddr = conn.GetTargetAddress()
+		protocol = "tcp"
 	}
-	remote, err = dialfunc(protocol, connAddr, this.config.Timeout)
-	if needUpdate {
-		if this.config.Lbinfo.Enable {
-			logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
-			this.lb.Update(connAddr, err == nil)
-		}
+	now := time.Now()
+	remote, err = transport.Dial(protocol, connAddr, this.config.Timeout)
+	cost := time.Now().Sub(now) / time.Millisecond
+	if this.config.Lbinfo.Enable && vinfo.HostRule == check.RULE_PROXY {
+		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
+		this.lb.Update(connAddr, err == nil)
 	}
 	if err != nil {
-		logger.Errorf("Dial connection to proxy/target svr fail, err:%s, svr addr:%s", err, connAddr)
-		conn.Close()
+		logger.Errorf("Dial connection to target/proxy svr fail, err:%s, svr addr:%s, cost:%d", err, connAddr, cost)
 		return
 	}
 	defer func() {
-		conn.Close()
 		remote.Close()
 	}()
 	var token uint32 = 0
@@ -136,16 +121,14 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 			token = newWrapConn.GetToken()
 		}
 	}
-	logger.Infof("Connect to proxy svr success, target:%s, token:%d, protocol:%s", remote.RemoteAddr(), token, protocol)
+	logger.Infof("Connect to proxy/target svr success, target:%s, name:%s, token:%d, protocol:%s, cost:%d",
+		remote.RemoteAddr(), connAddr, token, protocol, cost)
 	ctx, cancel := context.WithCancel(context.Background())
 	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
 	wbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)
-	if sr != dw || dr != sw {
-		logger.Errorf("Data transfer error, br:%d, bw:%d, pr:%d, pw:%d", sr, sw, dr, dw)
-	}
 }
 
 func(this *LocalClient) Start() error {

@@ -33,6 +33,7 @@ type LocalConfig struct {
 	Encrypt   string          `json:"encrypt"`
 	Key       string          `json:"key"`
 	Lbinfo    LoadBalanceInfo `json:"loadbalance"`
+	TransportConfig string    `json:"transport"`
 }
 
 func NewLocalConfig() *LocalConfig {

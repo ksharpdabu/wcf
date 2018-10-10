@@ -4,3 +4,4 @@ baidu.com,block
 10.0.0.0/8,direct
 172.0.0.0/8,direct
 solidot.org,direct
+biliapi.com,block

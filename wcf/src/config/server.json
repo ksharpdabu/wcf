@@ -1,0 +1,12 @@
+{
+	"localaddr":[
+		{"address":"127.0.0.1:8020", "protocol":"tcp"},
+		{"address":"127.0.0.1:8021", "protocol":"kcp"}
+	],
+	"timeout":5,
+	"userinfo":"D:/GoProj/wcf/wcf/src/config/userinfo.dat",
+	"encrypt":"xor",
+	"key":"hellotest",
+	"host":"D:/GoProj/wcf/wcf/src/config/server_host.rule",
+	"transport":"D:/GoProj/wcf/wcf/src/config/transport.json"
+}
