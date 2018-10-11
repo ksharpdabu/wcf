@@ -85,49 +85,39 @@ func InitAllProtocol(file string) error {
 	return nil
 }
 
-func Regist(pt string, bindFunc BindFunc, dialFunc DialFunc, initFunc InitFunc) error {
+func Regist(pt string, bindFunc BindFunc, dialFunc DialFunc, initFunc InitFunc) {
 	if bindFunc != nil {
-		if err := RegistBind(pt, bindFunc); err != nil {
-			return err
-		}
+		RegistBind(pt, bindFunc)
 	}
 	if dialFunc != nil {
-		if err := RegistDial(pt, dialFunc); err != nil {
-			return err
-		}
+		RegistDial(pt, dialFunc)
 	}
 	if initFunc != nil {
-		if err := RegistInit(pt, initFunc); err != nil {
-			return err
-		}
+		RegistInit(pt, initFunc)
 	}
-	return nil
 }
 
-func RegistBind(pt string, bindFunc BindFunc) error {
+func RegistBind(pt string, bindFunc BindFunc) {
 	if _, ok := bindmp[pt]; ok {
-		return errors.New(fmt.Sprintf("bind protocol:%s already regist!", pt))
+		panic(fmt.Sprintf("bind protocol:%s already regist!", pt))
 	}
 	bindnames = append(bindnames, pt)
 	bindmp[pt] = bindFunc
-	return nil
 }
 
-func RegistDial(pt string, dialFunc DialFunc) error {
+func RegistDial(pt string, dialFunc DialFunc) {
 	if _, ok := dialmp[pt]; ok {
-		return errors.New(fmt.Sprintf("dial protocol:%s already regist!", pt))
+		panic(fmt.Sprintf("dial protocol:%s already regist!", pt))
 	}
 	dialnames = append(dialnames, pt)
 	dialmp[pt] = dialFunc
-	return nil
 }
 
-func RegistInit(pt string, initFunc InitFunc) error {
+func RegistInit(pt string, initFunc InitFunc) {
 	if _, ok := initmp[pt]; ok {
-		return errors.New(fmt.Sprintf("init protocol:%s already regist!", pt))
+		panic(fmt.Sprintf("init protocol:%s already regist!", pt))
 	}
 	initmp[pt] = initFunc
-	return nil
 }
 
 func GetAllBindName() []string {

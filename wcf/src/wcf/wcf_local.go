@@ -8,12 +8,13 @@ import (
 	"context"
 	"sync/atomic"
 	"check"
-	"mix_layer"
 	"proxy"
 	"net_utils"
 	"lb"
 	"time"
-	"transport"
+	"proxy_delegate"
+	"mix_delegate"
+	"transport_delegate"
 )
 
 type LocalClient struct {
@@ -92,7 +93,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		protocol = "tcp"
 	}
 	now := time.Now()
-	remote, err = transport.Dial(protocol, connAddr, this.config.Timeout)
+	remote, err = transport_delegate.Dial(protocol, connAddr, this.config.Timeout)
 	cost := time.Now().Sub(now) / time.Millisecond
 	if this.config.Lbinfo.Enable && vinfo.HostRule == check.RULE_PROXY {
 		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
@@ -107,7 +108,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	}()
 	var token uint32 = 0
 	if vinfo.HostRule == check.RULE_PROXY {  //only proxy mode should wrap this layer
-		newConn, err := mix_layer.Wrap(this.config.Encrypt, this.config.Key, remote)
+		newConn, err := mix_delegate.Wrap(this.config.Encrypt, this.config.Key, remote)
 		if err != nil {
 			logger.Errorf("Wrap connection with mix method:%s fail, err:%v, conn:%s", this.config.Encrypt, err, remote.RemoteAddr())
 			return
@@ -136,7 +137,7 @@ func(this *LocalClient) Start() error {
 	wg.Add(len(this.config.Localaddr))
 	var sessionid uint32 = 0
 	for _, config := range this.config.Localaddr {
-		acceptor, err := proxy.Bind(config.Name, config.Address)
+		acceptor, err := proxy_delegate.Bind(config.Name, config.Address)
 		if err != nil {
 			wg.Done()
 			log.Errorf("Bind addr:%s use protocol:%s fail, err:%v", config.Address, config.Name, err)

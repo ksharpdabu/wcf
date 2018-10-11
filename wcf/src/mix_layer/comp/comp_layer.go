@@ -1,7 +1,6 @@
 package comp
 
 import (
-	//"mix_layer"
 	"net"
 	"compress/gzip"
 )

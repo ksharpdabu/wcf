@@ -12,8 +12,9 @@ import (
 	"check"
 	"sync/atomic"
 	"sync"
-	"transport"
 	"time"
+	"mix_delegate"
+	"transport_delegate"
 )
 
 type RemoteServer struct {
@@ -105,7 +106,7 @@ func(this *RemoteServer) Start() error {
 	var wg sync.WaitGroup
 	wg.Add(len(this.config.Localaddr))
 	for _, v := range this.config.Localaddr {
-		binder, err := transport.Bind(v.Protocol, v.Address)
+		binder, err := transport_delegate.Bind(v.Protocol, v.Address)
 		if err != nil {
 			log.Errorf("Bind local svr fail, err:%v, local addr:%s, protocol:%s", err, v.Address, v.Protocol)
 			return err
@@ -116,7 +117,7 @@ func(this *RemoteServer) Start() error {
 			return err
 		}
 		acceptor.AddMixWrap(func(conn net.Conn) (mix_layer.MixConn, error) {
-			return mix_layer.Wrap(this.config.Encrypt, this.config.Key, conn)
+			return mix_delegate.Wrap(this.config.Encrypt, this.config.Key, conn)
 		})
 		acceptor.OnAuth = func(user, pwd string) bool {
 			return this.userinfo.Check(user, pwd)

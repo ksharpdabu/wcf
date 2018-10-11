@@ -6,10 +6,7 @@ import (
 	_ "net/http/pprof"
 	log "github.com/sirupsen/logrus"
 	"wcf"
-	_ "mix_layer"
-	_ "mix_layer/comp"
-	_ "mix_layer/xor"
-	"transport"
+	"transport_delegate"
 )
 
 var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/server.json", "config file")
@@ -28,7 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read config fail, err:%v, config:%s", err, *config)
 	}
-	transport.InitAllProtocol(cfg.TransportConfig)
+	transport_delegate.InitAllProtocol(cfg.TransportConfig)
 	log.Printf("Config:%+v", cfg)
 	cli := wcf.NewServer(cfg)
 	if cli == nil {
