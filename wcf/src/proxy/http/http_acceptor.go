@@ -5,16 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"bytes"
-	"strings"
-	"strconv"
 	"net_utils"
 	"proxy"
-	"check"
+	"net/http"
+	"bufio"
 )
 
-var HTTP_END = "\r\n\r\n"
-var PROXY_REQ_NAME = "CONNECT"
-var PROXY_RSP_STR = "%s 200 connection established\r\n\r\n"
+var PROXY_RSP_SUCC = []byte("HTTP/1.1 200 connection established\r\n\r\n")
 
 func init() {
 	proxy.Regist("http", func(addr string) (proxy.ProxyListener, error) {
@@ -33,12 +30,13 @@ type HttpAddress struct {
 type HttpConn struct {
 	address *HttpAddress
 	net.Conn
+	bReader *bufio.Reader
 	buffer []byte
 }
 
 func(this *HttpConn) Read(b []byte) (n int, err error) {
 	if this.buffer == nil || len(this.buffer) == 0 {
-		return this.Conn.Read(b)
+		return this.bReader.Read(b)
 	}
 	cnt := copy(b, this.buffer)
 	if cnt == len(this.buffer) {
@@ -99,77 +97,41 @@ func(this *HttpAcceptor) AddHostHook(fun proxy.HostCheckFunc) {
 	this.onHostCheck = fun
 }
 
+func(this *HttpAcceptor) reqToBytes(r *http.Request) []byte {
+	var writer bytes.Buffer
+	r.Write(&writer)
+	return writer.Bytes()
+}
+
+func(this *HttpAcceptor) parseAddrPort(host string) (error, string, uint16) {
+	err, _, addr, port := net_utils.GetUrlInfo(host)
+	return err, addr, uint16(port)
+}
+
+//refer taosocks
 func(this *HttpAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
-	buffer := make([]byte, 2048)
-	index := 0
-	total := len(buffer)
-	for ;index < total; {
-		cnt, err := conn.Read(buffer[index:])
-		if err != nil || cnt <= 0{
-			return nil, errors.New(fmt.Sprintf("read connect req from browser fail, err:%v, conn:%s", err, conn.RemoteAddr()))
-		}
-		index += cnt
-		if index > 4 {
-			if string(buffer[index - 4:index]) == HTTP_END {
-				break
-			}
-		}
+	bReader := bufio.NewReader(conn)
+	req, err := http.ReadRequest(bReader)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("read http request fail, err:%v, conn:%s", err, conn.RemoteAddr()))
 	}
-	if string(buffer[index - 4:index]) != HTTP_END {
-		return nil, errors.New(fmt.Sprintf("invalid proxy req, not end with \r\n, conn:%s", conn.RemoteAddr()))
-	}
-	arr := bytes.SplitN(buffer[:index], []byte("\r\n"), 2)
-	line1 := string(arr[0])
-	params := strings.Split(line1, " ")
-	if len(params) != 3 {
-		return nil, errors.New(fmt.Sprintf("invalid proxy params, line:%s, conn:%s", line1, conn.RemoteAddr()))
-	}
-	httpType := params[0]
-	var url string
-	var port uint16
-	var spare []byte
-	if httpType == PROXY_REQ_NAME {
-		urlPort := strings.Split(params[1], ":")
-		if len(urlPort) != 2 {
-			return nil, errors.New(fmt.Sprintf("parse proxy url/port fail, param:%s, conn:%s", params[1], conn.RemoteAddr()))
-		}
-		url = urlPort[0]
-		tmpPort, err := strconv.ParseUint(urlPort[1], 10, 16)
-		if err != nil {
-			return nil, errors.New(fmt.Sprintf("parse proxy url/port fail, url:%s, param:%s, conn:%s", url, params[1], conn.RemoteAddr()))
-		}
-		port = uint16(tmpPort)
-		rsp := fmt.Sprintf(PROXY_RSP_STR, params[2])
-		err = net_utils.SendSpecLen(conn, []byte(rsp))
-		if err != nil {
-			return nil,errors.New(fmt.Sprintf("send proxy rsp to browser fail, err:%v, conn:%s", err, conn))
+	var waitToSend []byte
+	if req.Method == http.MethodConnect {
+		if err = net_utils.SendSpecLen(conn, PROXY_RSP_SUCC); err != nil {
+			return nil, errors.New(fmt.Sprintf("send connect method reply to browser fail, err:%v, conn:%s", err, conn.RemoteAddr()))
 		}
 	} else {
-		spare = buffer[:index]
-		err, _, turl, tport := check.GetUrlInfo(params[1])
-		if err != nil {
-			return nil, errors.New(fmt.Sprintf("parse url, port fail, err:%v, params:%s, conn:%s", err, params[1], conn.RemoteAddr()))
-		}
-		url = turl
-		port = uint16(tport)
+		waitToSend = this.reqToBytes(req)
 	}
-	ip := net.ParseIP(url)
-	addrType := 0
-	if ip == nil {
-		addrType = 0x3
-	} else if ip.To4() != nil {
-		addrType = 0x1
-	} else {
-		addrType = 0x4
+	err, addr, port := this.parseAddrPort(req.Host)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("parse http addr/port fail, err:%v, host:%s", err, req.Host))
 	}
-	if this.onHostCheck != nil {
-		var ck bool
-		ck, url, port, addrType = this.onHostCheck(url, port, addrType)
-		if !ck {
-			return nil, errors.New(fmt.Sprintf("host check fail, host:%s, conn:%s", url, conn.RemoteAddr()))
-		}
-	}
-	return &HttpConn{Conn:conn, address:&HttpAddress{Name:url, Port:uint16(port), AddrType:addrType, Address:fmt.Sprintf("%s:%d", url, port), HttpType:httpType}, buffer:spare}, nil
+	return &HttpConn{
+		Conn:conn,
+		address:&HttpAddress{Name:addr, Port:port, AddrType:proxy.ADDR_TYPE_DETERMING, Address:fmt.Sprintf("%s:%d", addr, port), HttpType:req.Method},
+		buffer:waitToSend, bReader:bReader,
+		}, nil
 }
 
 func(this *HttpConn) GetTargetOPType() int {

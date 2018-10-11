@@ -38,6 +38,7 @@ func(this *HttpClient) Read(b []byte) (int, error) {
 }
 
 var CONNECT_STRING = "CONNECT %s HTTP/1.0\r\n\r\n"
+var HTTP_END = "\r\n\r\n"
 
 func handleShake(addr string, conn net.Conn) (*HttpClient, error) {
 	err := net_utils.SendSpecLen(conn, []byte(fmt.Sprintf(CONNECT_STRING, addr)))

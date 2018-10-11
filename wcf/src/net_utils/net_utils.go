@@ -7,6 +7,11 @@ import (
 	"sync"
 	"io"
 	//"github.com/sirupsen/logrus"
+	"strconv"
+	"regexp"
+	"strings"
+	"errors"
+	"fmt"
 )
 
 func IsDone(ctx context.Context) bool {
@@ -173,3 +178,35 @@ func SendSpecLen(conn net.Conn, buf[]byte) error {
 	return nil
 }
 
+//schema, domain, port
+func GetUrlInfo(req string) (error, string, string, int) {
+	req = strings.ToLower(req)
+	reg := regexp.MustCompile("^(https?)?(://)?([-a-zA-Z0-9\\.]+):?(\\d*).*")
+	parsed := reg.FindStringSubmatch(req)
+	if len(parsed) != 5 {
+		return errors.New(fmt.Sprintf("parse fail, data:%v", parsed)), "", "", 0
+	}
+	schema := parsed[1]
+	host := parsed[3]
+	sport := parsed[4]
+	if len(host) == 0 {
+		return errors.New(fmt.Sprintf("invalid host, url:%s", req)), "", "", 0
+	}
+	var port = 80
+	if len(sport) != 0 {
+		tmp, e := strconv.ParseInt(sport, 10, 16)
+		if e != nil {
+			return errors.New(fmt.Sprintf("parse port fail, portstr:%s, url:%s", sport, req)), "", "", 0
+		}
+		port = int(tmp)
+	} else {
+		if len(schema) == 0 || schema == "http" {
+			port = 80
+		} else if schema == "https" {
+			port = 443
+		} else {
+			return errors.New(fmt.Sprintf("invalid schema:%s, url:%s", schema, req)), "", "", 0
+		}
+	}
+	return nil, schema, host, port
+}

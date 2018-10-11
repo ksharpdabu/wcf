@@ -13,6 +13,7 @@ const (
 )
 
 const (
+	ADDR_TYPE_DETERMING = 0
 	ADDR_TYPE_IPV4 = 1
 	ADDR_TYPE_IPV6 = 4
 	ADDR_TYPE_DOMAIN = 3
