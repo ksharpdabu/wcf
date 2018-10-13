@@ -15,6 +15,7 @@ import (
 	"time"
 	"mix_delegate"
 	"transport_delegate"
+	"math/rand"
 )
 
 type RemoteServer struct {
@@ -46,6 +47,49 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	return cli
 }
 
+func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint32) {
+	defer func() {
+		conn.Close()
+	}()
+	var connaddr string
+	var protocol string
+	if len(this.config.ErrConnect) != 0 {
+		item := this.config.ErrConnect[rand.Intn(len(this.config.ErrConnect))]
+		connaddr = item.Address
+		protocol = item.Protocol
+	}
+	logger := log.WithFields(log.Fields{
+		"local": conn.RemoteAddr(),
+		"remote":connaddr,
+		"protocol":protocol,
+		"type":"err_conn",
+		"id":sessionid,
+		"token":conn.GetToken(),
+	})
+	logger.Infof("Recv invalid connection from remote")
+	if len(this.config.ErrConnect) == 0 {
+		//如果没有配置异常连接地址, 那么默认卡住1~30秒后自动关闭
+		logger.Errorf("No err redirect domain found, time and close!")
+		time.Sleep(time.Duration(1 + rand.Int63n(29)) *time.Second)
+		return
+	}
+	remote, err, dur := transport_delegate.Dial(protocol, connaddr, this.config.Timeout)
+	if err != nil {
+		logger.Errorf("Dial confuse domain fail, err:%v, domain:%s, protocol:%s, cost:%dms", err, connaddr, protocol, dur)
+		return
+	}
+	defer func() {
+		remote.Close()
+	}()
+	logger.Infof("Dial confuse domain success, dst conn:%s, protocol:%s, domain:%s, cost:%dms", remote.RemoteAddr(), protocol, connaddr, dur)
+	ctx, cancel := context.WithCancel(context.Background())
+	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
+	wbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
+	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
+	logger.Infof("Confuse ata transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
+		sr, sw, dr, dw, sre, swe, dre, dwe)
+}
+
 func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	logger := log.WithFields(log.Fields{
 		"local": conn.RemoteAddr(),
@@ -54,7 +98,11 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 		"id": sessionid,
 		"token": conn.GetToken(),
 	})
-	logger.Infof("Recv new connection from remote")
+	if conn.GetHandshakeResult() != true {
+		this.handleErrConnect(conn, sessionid)
+		return
+	}
+	logger.Infof("Recv new connection from remote success")
 	var remote net.Conn
 	var err error
 	var address string
@@ -78,18 +126,18 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 			address = fmt.Sprintf("%s:%d", vinfo.NewHostValue, conn.GetTargetPort())
 		}
 	}
-	now := time.Now()
-	remote, err = net.DialTimeout("tcp", address, this.config.Timeout)
+	var cost1 int64
+	var cost2 int64
+	remote, err, cost1 = transport_delegate.Dial("tcp", address, this.config.Timeout)
 	if err != nil {
-		remote, err = net.DialTimeout("tcp", address, this.config.Timeout / 2)
+		remote, err, cost2 = transport_delegate.Dial("tcp", address, this.config.Timeout / 2)
 	}
-	cost := time.Now().Sub(now) / time.Millisecond
 	if err != nil {
 		conn.Close()
-		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%d", err, address, conn.RemoteAddr(), cost)
+		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%dms", err, address, conn.RemoteAddr(), cost1 + cost2)
 		return
 	}
-	logger.Infof("Connect to remote svr success, target:%s, cost:%d", remote.RemoteAddr(),cost)
+	logger.Infof("Connect to remote svr success, target:%s, cost:%dms", remote.RemoteAddr(), cost1 + cost2)
 	defer func() {
 		conn.Close()
 		remote.Close()

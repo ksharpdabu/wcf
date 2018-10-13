@@ -11,11 +11,8 @@ import (
 
 func TestBuildAndParse(t *testing.T) {
 	data := []byte("hello world this is a test")
-	enc, err := BuildDataPacket(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	total, err := CheckRelayPacketReay(enc)
+	enc := BuildDataPacket(data)
+	total, err := CheckRelayPacketReady(enc)
 	t.Logf("total:%d, err:%v", total, err)
 	t.Logf("%s", hex.EncodeToString(enc))
 	dec, err := GetPacketData(enc)

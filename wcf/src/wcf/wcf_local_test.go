@@ -61,10 +61,47 @@ func buildFrameData(data []byte) []byte {
 	return buf
 }
 
-func TestSRLittle(t *testing.T) {
-	conn, err := socks.DialWithTimeout("sendev.cc:8807", "127.0.0.1:8010", time.Second * 2)
+func TestSendBack(t *testing.T) {
+	acceptor, err := net.Listen("tcp", "127.0.0.1:8807")
 	if err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
+	}
+	for {
+		conn, err := acceptor.Accept()
+		if err != nil {
+			log.Errorf("recv fail, err:%v", err)
+			continue
+		}
+		log.Infof("recv conn:%s, time:%v", conn.RemoteAddr(), time.Now())
+		go func(cn net.Conn) {
+			buf := make([]byte, 1024)
+			defer func() {
+				cn.Close()
+			}()
+			for {
+				start := time.Now()
+				cnt, err := cn.Read(buf)
+				if err != nil {
+					log.Errorf("read err:%v", err)
+					return
+				}
+				err = net_utils.SendSpecLen(cn, buf[:cnt])
+				if err != nil {
+					log.Errorf("write err:%v", err)
+					return
+				}
+				log.Infof("write %d char cost:%d", cnt, time.Now().Sub(start) / time.Millisecond)
+			}
+		}(conn)
+	}
+}
+
+func TestSRLittle(t *testing.T) {
+	log.Infof("connect start:%v", time.Now())
+	conn, err := socks.DialWithTimeout("127.0.0.1:8807", "127.0.0.1:8010", time.Second * 3)
+	log.Infof("connect cost:%v", time.Now())
+	if err != nil {
+		log.Fatal(err)
 	}
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -72,23 +109,31 @@ func TestSRLittle(t *testing.T) {
 		defer func() {
 			wg.Done()
 		}()
-		for i := 0; i < 50000; i++ {
+		for i := 0; i < 1; i++ {
 			data := buildFrameData([]byte(fmt.Sprintf("helloworld:%d", i)))
 			net_utils.SendSpecLen(conn, data)
-			log.Infof("send:%s", string(data[4:len(data) - 4]))
+			//log.Infof("send:%s", string(data[4:len(data) - 4]))
+			//time.Sleep(1 * time.Millisecond)
 		}
+		log.Infof("send finish:%v", time.Now())
 	}()
 	go func() {
 		defer func() {
 			wg.Done()
 		}()
-		buf := make([]byte, 1024 * 32)
+		buf := make([]byte, 512)
 		index := 0
-		conn.SetReadDeadline(time.Now().Add(30 *time.Second))
+		fRead := false
 		for {
+			conn.SetReadDeadline(time.Now().Add(5 *time.Second))
 			cnt, err := conn.Read(buf[index:])
 			if err != nil {
-				t.Fatalf("%v, index:%d", err, index)
+				log.Errorf("err:%v, index:%d", err, index)
+				return
+			}
+			if !fRead {
+				fRead = true
+				log.Infof("first read:%v", time.Now())
 			}
 			index += cnt
 			for {
@@ -101,7 +146,7 @@ func TestSRLittle(t *testing.T) {
 				}
 				raw, _, err, old, newcrc := getFrameData(buf[:datalen])
 				if err != nil {
-					t.Fatal(err)
+					log.Fatalf("read err:%v", err)
 				}
 				copy(buf, buf[datalen:])
 				index -= datalen
@@ -111,12 +156,13 @@ func TestSRLittle(t *testing.T) {
 	}()
 	wg.Wait()
 	conn.Close()
+	log.Infof("conn:%s close", conn.RemoteAddr())
 }
 
 func TestStart(t *testing.T) {
 	cfg := LocalConfig{}
 	cfg.Timeout = 5 * time.Second
-	cfg.Proxyaddr = []ProxyAddrInfo {ProxyAddrInfo{"127.0.0.1:8020", 50}}
+	cfg.Proxyaddr = []ProxyAddrInfo {ProxyAddrInfo{"127.0.0.1:8020", 50, "tcp"}}
 	cfg.Localaddr = append(cfg.Localaddr, AddrConfig{Name:"socks", Address:"127.0.0.1:8010"})
 	cfg.User = "test"
 	cfg.Pwd = "xxx"

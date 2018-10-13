@@ -9,18 +9,24 @@ import (
 )
 
 type ProxyAddrConfig struct {
-	Protocol string  `json:"protocol"`
-	Address string `json:"address"`
+	Protocol string `json:"protocol"`
+	Address  string `json:"address"`
+}
+
+type ErrRedirectAddress struct {
+	Protocol string `json:"protocol"`
+	Address  string `json:"address"`
 }
 
 type ServerConfig struct {
-	Localaddr []ProxyAddrConfig        `json:"localaddr"`
-	Userinfo  string        `json:"userinfo"`
-	Timeout   time.Duration `json:"timeout"`
-	Encrypt   string        `json:"encrypt"`
-	Key       string        `json:"key"`
-	Host      string        `json:"host"`
-	TransportConfig string  `json:"transport"`
+	Localaddr       []ProxyAddrConfig    `json:"localaddr"`
+	Userinfo        string               `json:"userinfo"`
+	Timeout         time.Duration        `json:"timeout"`
+	Encrypt         string               `json:"encrypt"`
+	Key             string               `json:"key"`
+	Host            string               `json:"host"`
+	TransportConfig string               `json:"transport"`
+	ErrConnect      []ErrRedirectAddress `json:"err_redirect"`
 }
 
 func NewServerConfig() *ServerConfig {

@@ -2,18 +2,17 @@ package relay
 
 import (
 	"net"
-	"context"
 	"errors"
 	"net_utils"
 	"fmt"
-	"encoding/binary"
 	"wcf/relay/msg"
 	"github.com/golang/protobuf/proto"
 	"math/rand"
 	"time"
 	"mix_layer"
 	"strings"
-	"github.com/xtaci/kcp-go"
+	"transport_delegate"
+	//log "github.com/sirupsen/logrus"
 )
 
 const MAX_BYTE_AUTH_PACKET uint32 = 128
@@ -48,6 +47,16 @@ type RelayConn struct {
 	net.Conn
 	token uint32
 	user string
+	handshake bool
+	errmsg error
+}
+
+func(this *RelayConn) GetHandshakeErrmsg() error {
+	return this.errmsg
+}
+
+func(this *RelayConn) GetHandshakeResult() bool {
+	return this.handshake
 }
 
 func(this *RelayConn) GetTargetName() string {
@@ -86,11 +95,7 @@ func Bind(protocol string, address string) (*RelayAcceptor, error) {
 	protocol = strings.ToLower(protocol)
 	var listener net.Listener
 	var err error
-	if protocol == "kcp" {
-		listener, err = kcp.ListenWithOptions(address, nil, 10, 3)
-	} else {
-		listener, err = net.Listen(protocol, address)
-	}
+	listener, err = transport_delegate.Bind(protocol, address)
 	if err != nil {
 		return nil, err
 	}
@@ -103,94 +108,74 @@ func WrapListener(listener net.Listener) (*RelayAcceptor, error) {
 	return ra, nil
 }
 
-func isDone(ctx context.Context) bool {
-	select {
-	case <- ctx.Done():
-		return true
-	default:
-		return false
-	}
-}
-
-func BuildMsgFrame(data []byte) []byte {
-	msg := make([]byte, len(data) + 4)
-	binary.BigEndian.PutUint32(msg, uint32(len(data)) + 4)
-	copy(msg[4:], data)
-	return msg
-}
-
-func RecvOneMsg(conn net.Conn, buffer []byte) ([]byte, error) {
-	err := net_utils.RecvSpecLen(conn, buffer[0:4])
-	if err != nil {
-		return nil, err
-	}
-	total := binary.BigEndian.Uint32(buffer[0:4])
-	if total >= MAX_BYTE_PER_PACKET {
-		return nil, errors.New(fmt.Sprintf("invalid pkg size:%d", total))
-	}
-	if total > uint32(len(buffer)) {
-		return nil, errors.New(fmt.Sprintf("buffer too small, pkg size:%d, buffer size:%d", total, len(buffer)))
-	}
-	err = net_utils.RecvSpecLen(conn, buffer[0:total - 4])
-	if err != nil {
-		return nil, err
-	}
-	return buffer[0:total - 4], nil
-}
-
-func(this *RelayAcceptor) buildAuthRsp(result int32, token uint32) []byte {
-	rsp := msg.AuthMsgRsp{}
-	rsp.Result = proto.Int32(result)
-	rsp.Token = proto.Uint32(token)
-	data, _ := proto.Marshal(&rsp)
-	return data
-}
-
 func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
-	buf := make([]byte, 512)
-	err := net_utils.RecvSpecLen(conn, buf[0:4])
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("relay conn recv buf head fail, err:%v, conn:%s", err, conn.RemoteAddr()))
+	cn := &RelayConn{}
+	cn.Conn = nil
+	cn.token = rand.Uint32()
+	cn.handshake = false
+	buf := make([]byte, 1024)
+	index := 0
+	total := len(buf)
+	var ckResult int
+	var ckErr error
+	var auth msg.AuthMsgReq
+	for {
+		for ; index < total ;{
+			cnt, err := conn.Read(buf[index:])
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("relay conn recv buf head fail, err:%v, conn:%s", err, conn.RemoteAddr()))
+			}
+			index += cnt
+			ckResult, ckErr = CheckRelayPacketReadyWithLength(buf[:index], MAX_BYTE_AUTH_PACKET)
+			if ckResult != 0 {
+				break
+			}
+		}
+		if ckResult > 0 {
+			var raw []byte
+			raw, ckErr = GetPacketData(buf[:ckResult])
+			if ckErr == nil {
+				ckErr = proto.Unmarshal(raw, &auth)
+				if ckErr == nil {
+					break
+				}
+			}
+		}
+		cn.Conn = &ExtraConn{conn, buf[:index]}
+		cn.errmsg = ckErr
+		return cn, nil
 	}
-	total := binary.BigEndian.Uint32(buf)
-	if total >= MAX_BYTE_AUTH_PACKET || total == 0 {
-		return nil, errors.New(fmt.Sprintf("relay conn recv a invalid pkg, pkg len:%d, conn:%s", total, conn.RemoteAddr()))
-	}
-	err = net_utils.RecvSpecLen(conn, buf[0:total - 4])
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("relay conn recv auth pkg fail, err:%v, head total, conn:%s", err, total, conn.RemoteAddr()))
-	}
-	reqmsg := msg.AuthMsgReq{}
-	err = proto.Unmarshal(buf[0:total - 4], &reqmsg)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("decode auth packet body fail, err:%v, pkt len:%d, conn:%s", err, total, conn.RemoteAddr()))
-	}
-	result := this.OnAuth(reqmsg.GetUser(), reqmsg.GetPwd())
-	token := rand.Uint32()
+	result := this.OnAuth(auth.GetUser(), auth.GetPwd())
 	if !result {
-		net_utils.SendSpecLen(conn, BuildMsgFrame(this.buildAuthRsp(int32(msg.AuthResult_AUTH_USER_PWD_INVALID), token)))
+		net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_USER_PWD_INVALID), cn.token)))
 		return nil, errors.New(fmt.Sprintf("invalid user/pwd, user:%s, pwd:%s, conn:%s",
-			reqmsg.GetUser(), reqmsg.GetPwd(), conn.RemoteAddr()))
+			auth.GetUser(), auth.GetPwd(), conn.RemoteAddr()))
 	}
-	if len(reqmsg.GetAddress().GetAddress()) == 0 {
-		net_utils.SendSpecLen(conn, BuildMsgFrame(this.buildAuthRsp(int32(msg.AuthResult_AUTH_INVALID_ADDRESS), token)))
-		return nil, errors.New(fmt.Sprintf("invalid address:%s, user:%s, conn:%s",
-			reqmsg.GetAddress().GetAddress(), reqmsg.GetUser(), conn.RemoteAddr()))
+	if len(auth.GetAddress().GetAddress()) == 0 || len(auth.GetAddress().GetName()) == 0 || auth.GetAddress().GetPort() == 0 {
+		net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_INVALID_ADDRESS), cn.token)))
+		return nil, errors.New(fmt.Sprintf("invalid address:%s/name:%s/port:%d, user:%s, conn:%s",
+			auth.GetAddress().GetAddress(), auth.GetAddress().GetName(), auth.GetAddress().GetPort(),
+				auth.GetUser(), conn.RemoteAddr()))
 	}
-	err = net_utils.SendSpecLen(conn, BuildMsgFrame(this.buildAuthRsp(int32(msg.AuthResult_AUTH_OK), token)))
+	err := net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_OK), cn.token)))
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("send auth succ rsp to client fail, user:%s, err:%v, conn:%s", reqmsg.GetUser(), err, conn.RemoteAddr()))
+		return nil, errors.New(fmt.Sprintf("send auth succ rsp to client fail, user:%s, err:%v, conn:%s", auth.GetUser(), err, conn.RemoteAddr()))
 	}
-	return &RelayConn{
-		targetAddress:reqmsg.GetAddress().GetAddress(),
-		targetType:reqmsg.GetAddress().GetAddressType(),
-		token:token,
-		Conn:WrapRelayFrameConn(conn, nil, nil),
-		user:reqmsg.GetUser(),
-		targetName:reqmsg.Address.GetName(),
-		targetPort:reqmsg.Address.GetPort(),
-		targetOPType:reqmsg.GetOpType(),
-	}, nil
+	var spare []byte
+	if ckResult == index {
+		spare = nil
+	} else {
+		spare = buf[ckResult:index]
+	}
+	cn.targetAddress = auth.GetAddress().GetAddress()
+	cn.targetType = auth.GetAddress().GetAddressType()
+	cn.user = auth.GetUser()
+	cn.targetName = auth.GetAddress().GetName()
+	cn.targetPort = auth.GetAddress().GetPort()
+	cn.targetOPType = auth.GetOpType()
+	cn.Conn = WrapRelayFrameConn(conn, spare, nil)
+	cn.handshake = true
+	return cn, nil
 }
 
 func(this *RelayAcceptor) Start() error {

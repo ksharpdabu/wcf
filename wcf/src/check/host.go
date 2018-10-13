@@ -127,7 +127,12 @@ func NewRule(file string) (*Rule, error) {
 	return r, nil
 }
 
-func(this *Rule) GetHostRule(addr string) *RouteInfo {
+func(this *Rule) GetHostRule(addr string) (*RouteInfo) {
+	v, _ := this.CheckAndGetRule(addr)
+	return v
+}
+
+func(this *Rule) CheckAndGetRule(addr string) (*RouteInfo, bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	ip := net.ParseIP(addr)
@@ -136,7 +141,7 @@ func(this *Rule) GetHostRule(addr string) *RouteInfo {
 			tmpaddr := addr
 			for {
 				if v, ok := this.domain[tmpaddr]; ok {
-					return v
+					return v, true
 				}
 				index := strings.Index(tmpaddr, ".")
 				if index < 0 {
@@ -152,14 +157,14 @@ func(this *Rule) GetHostRule(addr string) *RouteInfo {
 			ip = newip.IP
 		}
 		if v, ok :=this.domain[addr]; ok {
-			return v
+			return v, true
 		}
 		for k, v := range this.cidr {
 			if k.Contains(ip){
-				return v
+				return v, true
 			}
 		}
 		break
 	}
-	return defaultInfo
+	return defaultInfo, false
 }

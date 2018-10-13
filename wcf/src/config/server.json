@@ -5,8 +5,11 @@
 	],
 	"timeout":5,
 	"userinfo":"D:/GoProj/wcf/wcf/src/config/userinfo.dat",
-	"encrypt":"xor",
+	"encrypt":"none",
 	"key":"hellotest",
 	"host":"D:/GoProj/wcf/wcf/src/config/server_host.rule",
-	"transport":"D:/GoProj/wcf/wcf/src/config/transport.json"
+	"transport":"D:/GoProj/wcf/wcf/src/config/transport.json",
+	"err_redirect":[
+		{"protocol":"tcp", "address":"127.0.0.1:36000"}
+	]
 }

@@ -6,10 +6,10 @@ import (
 	"time"
 	"sync"
 	"io"
-	//"github.com/sirupsen/logrus"
-	"strconv"
-	"regexp"
 	"strings"
+	"regexp"
+	"strconv"
+	//log "github.com/sirupsen/logrus"
 	"errors"
 	"fmt"
 )
@@ -106,6 +106,7 @@ func DataCopy(src net.Conn, dst net.Conn, buffer []byte) (int, int, error, error
 	if err != nil {
 		return 0, 0, err, nil
 	}
+	//logrus.Infof("read:%s->%s, data:%s", src.RemoteAddr(), dst.RemoteAddr(), string(buffer[:cnt]))
 	data := buffer[:cnt]
 	total := len(data)
 	index := 0

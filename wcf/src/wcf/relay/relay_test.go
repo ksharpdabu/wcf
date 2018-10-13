@@ -20,7 +20,7 @@ func getConfig() *RelayConfig {
 
 func TestRelayListen(t *testing.T) {
 	cfg := getConfig()
-	acc, err := Bind(server)
+	acc, err := Bind("tcp", server)
 	if err != nil {
 		logrus.Fatal(err)
 	}

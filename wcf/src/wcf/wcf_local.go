@@ -92,15 +92,14 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		connAddr = conn.GetTargetAddress()
 		protocol = "tcp"
 	}
-	now := time.Now()
-	remote, err = transport_delegate.Dial(protocol, connAddr, this.config.Timeout)
-	cost := time.Now().Sub(now) / time.Millisecond
+	var dur int64
+	remote, err, dur = transport_delegate.Dial(protocol, connAddr, this.config.Timeout)
 	if this.config.Lbinfo.Enable && vinfo.HostRule == check.RULE_PROXY {
 		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
 		this.lb.Update(connAddr, err == nil)
 	}
 	if err != nil {
-		logger.Errorf("Dial connection to target/proxy svr fail, err:%s, svr addr:%s, cost:%d", err, connAddr, cost)
+		logger.Errorf("Dial connection to target/proxy svr fail, err:%s, svr addr:%s, cost:%dms", err, connAddr, dur)
 		return
 	}
 	defer func() {
@@ -122,8 +121,8 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 			token = newWrapConn.GetToken()
 		}
 	}
-	logger.Infof("Connect to proxy/target svr success, target:%s, name:%s, token:%d, protocol:%s, cost:%d",
-		remote.RemoteAddr(), connAddr, token, protocol, cost)
+	logger.Infof("Connect to proxy/target svr success, target:%s, name:%s, token:%d, protocol:%s, cost:%dms",
+		remote.RemoteAddr(), connAddr, token, protocol, dur)
 	ctx, cancel := context.WithCancel(context.Background())
 	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
 	wbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
