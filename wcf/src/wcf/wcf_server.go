@@ -16,12 +16,16 @@ import (
 	"mix_delegate"
 	"transport_delegate"
 	"math/rand"
+	_ "github.com/mattn/go-sqlite3"
+	"database/sql"
+	"io/ioutil"
 )
 
 type RemoteServer struct {
 	config *ServerConfig
 	userinfo *UserHolder
 	host *check.Rule
+	db *sql.DB
 }
 
 func NewServer(config *ServerConfig) *RemoteServer {
@@ -36,13 +40,35 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	}
 	host, err := check.NewRule(cli.config.Host)
 	if err != nil {
-		log.Errorf("load rule fail, err:%v, host:%s", err, cli.config.Host)
+		log.Errorf("Load rule fail, err:%v, host:%s", err, cli.config.Host)
 		cli.host, err = check.NewRule("")
 		if err != nil {
 			panic("new rule fail")
 		}
 	} else {
 		cli.host = host
+	}
+	if config.ReportVisit.Enable {
+		for {
+			db, err := sql.Open("sqlite3", config.ReportVisit.DBFile)
+			if err != nil {
+				log.Errorf("Open visit record db fail, err:%v, file:%s", err, config.ReportVisit.DBFile)
+				break
+			}
+			data, err := ioutil.ReadFile(config.ReportVisit.SQLFILE)
+			if err != nil {
+				log.Errorf("Load db init sql file fail, err:%v, file:%s", err, config.ReportVisit.SQLFILE)
+				break
+			}
+			_, err = db.Exec(string(data))
+			if err != nil {
+				log.Errorf("Exec init sql fail, err:%v, data:%s", err, string(data))
+				break
+			}
+			log.Infof("Init visit record db success, file:%s", config.ReportVisit.DBFile)
+			cli.db = db
+			break
+		}
 	}
 	return cli
 }
@@ -90,7 +116,27 @@ func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint3
 		sr, sw, dr, dw, sre, swe, dre, dwe)
 }
 
+//上报当前
+func(this *RemoteServer) report(user string, from string, visitHost string,
+	read int64, write int64,
+		start time.Time, end time.Time, connectCost int64, logger *log.Entry) {
+	if this.db == nil {
+		return
+	}
+	prepare, err := this.db.Prepare("insert into visit_record(username, host, user_from, start_time, end_time, read_cnt, write_cnt, connect_cost) values(?, ?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		logger.Errorf("Create visit sql fail, err:%v", err)
+		return
+	}
+	_, err = prepare.Exec(user, visitHost, from, start, end, read, write, connectCost)
+	if err != nil {
+		logger.Errorf("insert into visit record db fail, err:%v", err)
+	}
+	prepare.Close()
+}
+
 func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
+	visitStart := time.Now()
 	logger := log.WithFields(log.Fields{
 		"local": conn.RemoteAddr(),
 		"remote": conn.GetTargetAddress(),
@@ -148,6 +194,7 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)
+	this.report(conn.GetUser(), conn.RemoteAddr().String(), address, int64(sr), int64(sw), visitStart, time.Now(), cost1 + cost2, logger)
 }
 
 func(this *RemoteServer) Start() error {

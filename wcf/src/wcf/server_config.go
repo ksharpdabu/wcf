@@ -18,6 +18,12 @@ type ErrRedirectAddress struct {
 	Address  string `json:"address"`
 }
 
+type ReportVisitConfig struct {
+	Enable bool   `json:"enable"`
+	DBFile string `json:"db_file"`
+	SQLFILE string `json:"init_sql_file"`
+}
+
 type ServerConfig struct {
 	Localaddr       []ProxyAddrConfig    `json:"localaddr"`
 	Userinfo        string               `json:"userinfo"`
@@ -27,6 +33,7 @@ type ServerConfig struct {
 	Host            string               `json:"host"`
 	TransportConfig string               `json:"transport"`
 	ErrConnect      []ErrRedirectAddress `json:"err_redirect"`
+	ReportVisit     ReportVisitConfig    `json:"report"`
 }
 
 func NewServerConfig() *ServerConfig {
