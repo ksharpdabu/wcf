@@ -19,9 +19,9 @@ type ErrRedirectAddress struct {
 }
 
 type ReportVisitConfig struct {
-	Enable bool   `json:"enable"`
-	DBFile string `json:"db_file"`
-	SQLFILE string `json:"init_sql_file"`
+	Enable        bool   `json:"enable"`
+	Visitor       string `json:"visitor"`
+	VisitorConfig string `json:"visitor_config"`
 }
 
 type ServerConfig struct {

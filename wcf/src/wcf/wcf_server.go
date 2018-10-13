@@ -16,16 +16,16 @@ import (
 	"mix_delegate"
 	"transport_delegate"
 	"math/rand"
-	_ "github.com/mattn/go-sqlite3"
-	"database/sql"
-	"io/ioutil"
+	"wcf/visit_delegate"
+	"wcf/visit"
 )
 
 type RemoteServer struct {
 	config *ServerConfig
 	userinfo *UserHolder
 	host *check.Rule
-	db *sql.DB
+	visitor visit.Visitor
+	reportQueue chan *visit.VisitInfo
 }
 
 func NewServer(config *ServerConfig) *RemoteServer {
@@ -38,6 +38,7 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	} else {
 		cli.userinfo = ui
 	}
+	//路由配置
 	host, err := check.NewRule(cli.config.Host)
 	if err != nil {
 		log.Errorf("Load rule fail, err:%v, host:%s", err, cli.config.Host)
@@ -48,29 +49,38 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	} else {
 		cli.host = host
 	}
+	//上报配置
 	if config.ReportVisit.Enable {
+		var err error
+		var visitor visit.Visitor
 		for {
-			db, err := sql.Open("sqlite3", config.ReportVisit.DBFile)
-			if err != nil {
-				log.Errorf("Open visit record db fail, err:%v, file:%s", err, config.ReportVisit.DBFile)
+			if visitor, err = visit_delegate.Get(config.ReportVisit.Visitor); err != nil {
+				log.Errorf("Load visitor fail err:%v, name:%s", err, config.ReportVisit.Visitor)
 				break
 			}
-			data, err := ioutil.ReadFile(config.ReportVisit.SQLFILE)
-			if err != nil {
-				log.Errorf("Load db init sql file fail, err:%v, file:%s", err, config.ReportVisit.SQLFILE)
+			if err = visitor.Init(config.ReportVisit.VisitorConfig); err != nil {
+				log.Errorf("Visitor init fail, err:%v, config:%s", err, config.ReportVisit.VisitorConfig)
 				break
 			}
-			_, err = db.Exec(string(data))
-			if err != nil {
-				log.Errorf("Exec init sql fail, err:%v, data:%s", err, string(data))
-				break
-			}
-			log.Infof("Init visit record db success, file:%s", config.ReportVisit.DBFile)
-			cli.db = db
+			cli.visitor = visitor
+			cli.reportQueue = make(chan *visit.VisitInfo, 2000)
+			go cli.asyncReport()
+			log.Infof("Load report visitor info success, name:%s", config.ReportVisit.Visitor)
 			break
 		}
+
 	}
 	return cli
+}
+
+func(this *RemoteServer) asyncReport() {
+	if this.visitor == nil {
+		return
+	}
+	for {
+		info := <- this.reportQueue
+		this.visitor.OnView(info)
+	}
 }
 
 func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint32) {
@@ -116,23 +126,30 @@ func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint3
 		sr, sw, dr, dw, sre, swe, dre, dwe)
 }
 
-//上报当前
+//上报当前的用户访问信息
 func(this *RemoteServer) report(user string, from string, visitHost string,
 	read int64, write int64,
 		start time.Time, end time.Time, connectCost int64, logger *log.Entry) {
-	if this.db == nil {
+	if this.visitor == nil {
 		return
 	}
-	prepare, err := this.db.Prepare("insert into visit_record(username, host, user_from, start_time, end_time, read_cnt, write_cnt, connect_cost) values(?, ?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		logger.Errorf("Create visit sql fail, err:%v", err)
-		return
+	visi := &visit.VisitInfo{
+		Name:user,
+		From:from,
+		Host:visitHost,
+		Read:read,
+		Write:write,
+		Start:start,
+		End:end,
+		ConnectCost:connectCost,
 	}
-	_, err = prepare.Exec(user, visitHost, from, start, end, read, write, connectCost)
-	if err != nil {
-		logger.Errorf("insert into visit record db fail, err:%v", err)
+	select {
+		case this.reportQueue <- visi:
+			break
+		default:
+			logger.Errorf("Queue full, skip report user:%s visit info, host:%s", user, visitHost)
+			break
 	}
-	prepare.Close()
 }
 
 func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
