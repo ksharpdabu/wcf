@@ -3,7 +3,7 @@
 		{"address":"127.0.0.1:8020", "protocol":"tcp"},
 		{"address":"127.0.0.1:8021", "protocol":"kcp"}
 	],
-	"timeout":5,
+	"timeout":2,
 	"userinfo":"D:/GoProj/wcf/wcf/src/config/userinfo.dat",
 	"encrypt":"none",
 	"key":"hellotest",

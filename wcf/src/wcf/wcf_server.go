@@ -153,6 +153,7 @@ func(this *RemoteServer) report(user string, from string, visitHost string,
 }
 
 func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
+	defer conn.Close()
 	visitStart := time.Now()
 	logger := log.WithFields(log.Fields{
 		"local": conn.RemoteAddr(),
@@ -165,12 +166,19 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 		this.handleErrConnect(conn, sessionid)
 		return
 	}
-	logger.Infof("Recv new connection from remote success")
+	ui := this.userinfo.GetUserInfo(conn.GetUser())
+	var curconn int
+	var ok bool
+	if curconn, ok = ui.ConnLimiter.TryAcqure(); !ok {
+		logger.Infof("User:%s reach max connection:%d, close it", ui.User, ui.MaxConnection)
+		return
+	}
+	defer ui.ConnLimiter.Release()
+	logger.Infof("Recv new connection from remote success, current connections:%d", curconn)
 	var remote net.Conn
 	var err error
 	var address string
 	if conn.GetTargetOPType() == proxy.OP_TYPE_FORWARD {
-		ui := this.userinfo.GetUserInfo(conn.GetUser())
 		if !ui.Forward.EnableForward || len(ui.Forward.ForwardAddr) == 0{
 			logger.Errorf("User no allaw use forward option or forward addr empty, skip, user:%s, addr:%s, conn:%s", ui.User, ui.Forward.ForwardAddr, conn.RemoteAddr())
 			return
@@ -196,13 +204,11 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 		remote, err, cost2 = transport_delegate.Dial("tcp", address, this.config.Timeout / 2)
 	}
 	if err != nil {
-		conn.Close()
 		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%dms", err, address, conn.RemoteAddr(), cost1 + cost2)
 		return
 	}
 	logger.Infof("Connect to remote svr success, target:%s, cost:%dms", remote.RemoteAddr(), cost1 + cost2)
 	defer func() {
-		conn.Close()
 		remote.Close()
 	}()
 	rbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)

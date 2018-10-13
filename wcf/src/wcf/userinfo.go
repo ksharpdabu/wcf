@@ -1,33 +1,34 @@
 package wcf
 
 import (
-	"sync"
-	"os"
-	log "github.com/sirupsen/logrus"
-	"encoding/json"
-	"reload"
 	"bufio"
-	"io"
+	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"io"
+	"os"
+	"reload"
+	"sync"
 )
 
 type ForwardInfo struct {
-	EnableForward bool     `json:"enable"`
-	ForwardAddr   string   `json:"address"`
+	EnableForward bool   `json:"enable"`
+	ForwardAddr   string `json:"address"`
 }
 
 type UserInfo struct {
-	User string `json:"user"`
-	Pwd string  `json:"pwd"`
-	Forward ForwardInfo `json:"forward"`
-
+	User          string      `json:"user"`
+	Pwd           string      `json:"pwd"`
+	Forward       ForwardInfo `json:"forward"`
+	MaxConnection int         `json:"max_conn"`
+	ConnLimiter   Limiter
 }
 
 type UserHolder struct {
-	mu sync.RWMutex
-	userinfo map[string] *UserInfo
-	file string
+	mu       sync.RWMutex
+	userinfo map[string]*UserInfo
+	file     string
 }
 
 func ReadAllLine(f string) ([][]byte, error) {
@@ -54,7 +55,7 @@ func ReadAllLine(f string) ([][]byte, error) {
 }
 
 func NewUserHolder(file string) (*UserHolder, error) {
-	r := &UserHolder{file:file, userinfo:make(map[string]*UserInfo)}
+	r := &UserHolder{file: file, userinfo: make(map[string]*UserInfo)}
 	if len(file) == 0 {
 		return r, nil
 	}
@@ -81,7 +82,11 @@ func NewUserHolder(file string) (*UserHolder, error) {
 					log.Errorf("Parse user json fail, err:%v, line:%d, data:%s", err, index, string(line))
 					return nil, err
 				}
+				if ui.MaxConnection == 0 {
+					ui.MaxConnection = 200
+				}
 				log.Infof("Read user:%+v from file", ui)
+				ui.ConnLimiter.Reset(ui.MaxConnection, ui.MaxConnection)
 				tmp[ui.User] = ui
 			}
 			return tmp, nil
@@ -90,6 +95,7 @@ func NewUserHolder(file string) (*UserHolder, error) {
 			if err == nil {
 				r.mu.Lock()
 				defer r.mu.Unlock()
+				//简单处理, 更新部分用户数据的时候重置所有用户数据, 不然要写到吐血
 				r.userinfo = result.(map[string]*UserInfo)
 			}
 			log.Infof("Reload userinfo from file:%s, success, size:%d", addr, len(result.(map[string]*UserInfo)))
@@ -104,7 +110,7 @@ func NewUserHolder(file string) (*UserHolder, error) {
 	return r, nil
 }
 
-func(this *UserHolder) GetUserInfo(name string) *UserInfo {
+func (this *UserHolder) GetUserInfo(name string) *UserInfo {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	if v, ok := this.userinfo[name]; ok {
@@ -113,7 +119,7 @@ func(this *UserHolder) GetUserInfo(name string) *UserInfo {
 	return nil
 }
 
-func(this *UserHolder) Check(name, pwd string) bool {
+func (this *UserHolder) Check(name, pwd string) bool {
 	ui := this.GetUserInfo(name)
 	if ui != nil {
 		if ui.Pwd == pwd {
