@@ -45,7 +45,7 @@ go build
 	"host":"d:/host.rule",
 	"encrypt":"xor",
 	"key":"hellotest",
-    "transport":"d:/transport.json"
+	"transport":"d:/transport.json"
 }
 ```
 * localaddr 为本地监听的地址, 目前支持3种代理, socks5, http, forward(透传)
@@ -87,8 +87,8 @@ google.com,proxy
 	"encrypt":"xor",
 	"key":"hellotest",
 	"host":"d:/host.rule",
-    "transport":"d:/transport.json",
-    "err_redirect":[
+	"transport":"d:/transport.json",
+	"err_redirect":[
 		{"protocol":"tcp", "address":"127.0.0.1:36000"}
 	],
 	"report":{
