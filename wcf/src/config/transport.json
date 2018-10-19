@@ -13,8 +13,8 @@
 	},
 	"tcp_tls":{
 		"bind":{
-			"pem_file":"./server.pem",
-			"key_file":"./server.key"
+			"pem_file":"D:/GoProj/fake_cert/ca.crt",
+			"key_file":"D:/GoProj/fake_cert/ca.key"
 		},
 		"dial":{
 			"skip_insecure":false

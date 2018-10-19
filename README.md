@@ -43,7 +43,7 @@ go build
 	"pwd":"xxx",
 	"timeout":5,
 	"host":"d:/host.rule",
-	"encrypt":"xor",
+	"encrypt":"none",
 	"key":"hellotest",
 	"transport":"d:/transport.json"
 }
@@ -81,20 +81,26 @@ google.com,proxy
 ### 远程端
 ```json
 {
-	"localaddr":[{"address":"127.0.0.1:8020", "protocol":"tcp"}, {"address":"127.0.0.1:8021", "protocol":"kcp"}],
+	"localaddr":[
+		{"address":"127.0.0.1:8020", "protocol":"tcp"},
+		{"address":"127.0.0.1:8021", "protocol":"kcp"},
+		{"address":"127.0.0.1:8022", "protocol":"tcp_tls"}
+	],
 	"timeout":5,
 	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
-	"encrypt":"xor",
+	"encrypt":"none",
 	"key":"hellotest",
 	"host":"d:/host.rule",
 	"transport":"d:/transport.json",
-	"err_redirect":[
-		{"protocol":"tcp", "address":"127.0.0.1:36000"}
-	],
 	"report":{
 		"enable":true,
 		"visitor":"json",
-		"visitor_config":"./visitor.json"
+		"visitor_config":"d:/visitor.json"
+	},
+	"redirect":{
+		"enable":true,
+		"redirector":"http",
+		"redirect_config":"d:/redirect.json"
 	}
 }
 ```
@@ -103,7 +109,7 @@ google.com,proxy
 * userinfo 用户配置文件, 下面说明
 * encrypt/key 加密方式与加密key, 需要保持与客户端一致
 * host 同client配置
-* transport 协议配置, 正常来说可以不用管, 有个transport.json 直接指定就可以了。
+* transport 协议配置, 正常来说可以不用管, 有个transport.json 直接指定就可以了, 配置项说明见下面。
 * err_redirect 用于当协议错误的时候进行转发
 * * protocol 转发使用的协议
 * * address 转发到此地址上
@@ -111,10 +117,79 @@ google.com,proxy
 * * enable 是否启用
 * * visitor 使用的观察者, 目前能使用的有json和sqlite3, 观察者的配置可以看后面
 * * visitor_config 配置观察者需要的数据的文件
+* redirect 用于错误重定向
+* * enable 是否启用, 启用的情况下, 最好不要使用混淆插件, 原因你懂的。
+* * redirector 用于协议出错时重定向的具体操作, 目前有http, raw, timeout 3种, 具体配置见下面
+* * * http 这个适用于server的传输协议使用tcp-tls(建议使用), tcp, 会把当前的流量解析成http, 然后将请求转发到配置的host上去, 取到回包后再返回给原先的链接。
+* * * raw 这个适用于server使用tcp协议, 将流量原封不动的透传到指定的host上去, 例如后端可以是一个ssh server 也可以是一个rdp server。
+* * * timeout 适用于所有的传输协议, 在到达指定时长后关闭连接。
+* * redirect_config 配置所有的重定向设置的文件, 直接使用在config目录下面的redirect.json即可。
+
+#### 传输配置(transport.json)
+以json格式进行配置, 每一个协议定义一个map, 分别有2个子对象, bind和dial, 配置只会在初始化的时候加载一次并保存起来。并不是所有的协议都需要有bind和dial的参数, 如果某一项没有可以直接不填, 如果都没有, 那就配置一个空的, 例如里面的那个tcp。
+```json
+{
+	"tcp":{},
+	"kcp":{
+		"bind":{
+			"data_shards":10,
+			"parity_shards":3
+		},
+		"dial":{
+			"data_shards":10,
+			"parity_shards":3
+		}
+	},
+	"tcp_tls":{
+		"bind":{
+			"pem_file":"D:/GoProj/fake_cert/ca.crt",
+			"key_file":"D:/GoProj/fake_cert/ca.key"
+		},
+		"dial":{
+			"skip_insecure":false
+		}
+	}
+}
+```
+##### 参数说明
+* kcp 妈蛋, 这2个参数我都不知道干嘛的, 具体的可以去kcp的github页面看下说明, 我这里用的是默认的2个参数。
+* * data_shards  
+* * parity_shards
+* tcp_tls 说白了就是tls, 这个协议主要是用于伪装https
+* * pem_file pem文件或者crt文件都ok
+* * key_file 私钥文件
+* * skip_insecure 当证书错误的时候是否中断, false为不中断
+
+#### 重定向配置
+目前使用json作为配置, 结构如下, 每个重定向器都有自己的参数配置, 在server启动时进行加载。
+```json
+{
+	"http":{
+		"redirect":["https://en.cppreference.com/"]
+	},
+	"raw":{
+		"protocol":"tcp",
+		"target":"127.0.0.1:36000"
+	},
+	"timeout":{
+		"min_duration":1,
+		"max_duration":30
+	}
+}
+```
+##### 参数说明
+* http
+* * redirect 重定向的目标地址, 建议转到自己的博客或者其他的大型https网站上去, 可以配置多个, 重定向的时候会随机选一个, 建议只配置一个, 多了实在无意义, 应该是脑抽了才写了支持多个。
+* raw
+* * protocol 使用的协议, 支持transport.json中配置的所有协议。
+* * target 目标地址, 按域名端口配置。
+* timeout
+* * min_duration 最小的时间值, 单位为秒
+* * max_duration 最大的时间值, 会在这2个值中间随机取一个值, 可以配置成相同的。
 
 #### 观察者配置
 
-##### sqlite3 观察者的配置
+##### sqlite3 观察者的配置(需要启用CGO)
 以json进行配置, 主要有下面几个项
 
 ```json
