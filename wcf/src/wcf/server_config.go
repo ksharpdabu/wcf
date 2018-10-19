@@ -24,16 +24,22 @@ type ReportVisitConfig struct {
 	VisitorConfig string `json:"visitor_config"`
 }
 
+type RedirectorConfig struct {
+	Enable         bool   `json:"enable"`
+	Redirector     string `json:"redirector"`
+	RedirectConfig string `json:"redirect_config"`
+}
+
 type ServerConfig struct {
-	Localaddr       []ProxyAddrConfig    `json:"localaddr"`
-	Userinfo        string               `json:"userinfo"`
-	Timeout         time.Duration        `json:"timeout"`
-	Encrypt         string               `json:"encrypt"`
-	Key             string               `json:"key"`
-	Host            string               `json:"host"`
-	TransportConfig string               `json:"transport"`
-	ErrConnect      []ErrRedirectAddress `json:"err_redirect"`
-	ReportVisit     ReportVisitConfig    `json:"report"`
+	Localaddr       []ProxyAddrConfig `json:"localaddr"`
+	Userinfo        string            `json:"userinfo"`
+	Timeout         time.Duration     `json:"timeout"`
+	Encrypt         string            `json:"encrypt"`
+	Key             string            `json:"key"`
+	Host            string            `json:"host"`
+	TransportConfig string            `json:"transport"`
+	Redirect        RedirectorConfig  `json:"redirect"`
+	ReportVisit     ReportVisitConfig `json:"report"`
 }
 
 func NewServerConfig() *ServerConfig {

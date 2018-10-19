@@ -1,0 +1,13 @@
+{
+	"http":{
+		"redirect":["https://en.cppreference.com/"]
+	},
+	"raw":{
+		"protocol":"tcp",
+		"target":"127.0.0.1:36000"
+	},
+	"timeout":{
+		"min_duration":1,
+		"max_duration":30
+	}
+}

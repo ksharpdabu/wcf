@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"wcf"
 	"transport_delegate"
+	"wcf/redirect_delegate"
 )
 
 var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/server.json", "config file")
@@ -25,8 +26,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read config fail, err:%v, config:%s", err, *config)
 	}
-	transport_delegate.InitAllProtocol(cfg.TransportConfig)
-	log.Printf("Config:%+v", cfg)
+	if err := transport_delegate.InitAllProtocol(cfg.TransportConfig); err != nil {
+		log.Fatalf("Init transport config fail, err:%v, config:%s", err, cfg.TransportConfig)
+	}
+	if cfg.Redirect.Enable {
+		if err := redirect_delegate.InitAll(cfg.Redirect.RedirectConfig); err != nil {
+			log.Fatalf("Init redirect config fail, err:%v, config:%s", err, cfg.Redirect.RedirectConfig)
+		}
+	}
+	log.Infof("Config:%+v", cfg)
 	cli := wcf.NewServer(cfg)
 	if cli == nil {
 		panic("could not create wcf server")

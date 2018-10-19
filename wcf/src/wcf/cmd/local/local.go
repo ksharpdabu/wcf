@@ -27,8 +27,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read config fail, err:%v, config:%s", err, *config)
 	}
-	transport_delegate.InitAllProtocol(cfg.TransportConfig)
-	log.Printf("Config:%+v", cfg)
+	if err :=transport_delegate.InitAllProtocol(cfg.TransportConfig); err != nil {
+		log.Fatalf("Init transport config fail, err:%v, config:%s", err, cfg.TransportConfig)
+	}
+	log.Infof("Config:%+v", cfg)
 	cli := wcf.NewClient(cfg)
 	if cli == nil {
 		panic("could not create wcf local")

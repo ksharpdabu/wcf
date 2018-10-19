@@ -15,9 +15,9 @@ import (
 	"time"
 	"mix_delegate"
 	"transport_delegate"
-	"math/rand"
 	"wcf/visit_delegate"
 	"wcf/visit"
+	"wcf/redirect_delegate"
 )
 
 type RemoteServer struct {
@@ -87,43 +87,12 @@ func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint3
 	defer func() {
 		conn.Close()
 	}()
-	var connaddr string
-	var protocol string
-	if len(this.config.ErrConnect) != 0 {
-		item := this.config.ErrConnect[rand.Intn(len(this.config.ErrConnect))]
-		connaddr = item.Address
-		protocol = item.Protocol
-	}
-	logger := log.WithFields(log.Fields{
-		"local": conn.RemoteAddr(),
-		"remote":connaddr,
-		"protocol":protocol,
-		"type":"err_conn",
-		"id":sessionid,
-		"token":conn.GetToken(),
-	})
-	logger.Infof("Recv invalid connection from remote")
-	if len(this.config.ErrConnect) == 0 {
-		//如果没有配置异常连接地址, 那么默认卡住1~30秒后自动关闭
-		logger.Errorf("No err redirect domain found, time and close!")
-		time.Sleep(time.Duration(1 + rand.Int63n(29)) *time.Second)
+	if !this.config.Redirect.Enable {
+		log.Infof("Redirect config not set, close it, sessionid:%d, conn:%s", sessionid, conn.RemoteAddr())
 		return
 	}
-	remote, err, dur := transport_delegate.Dial(protocol, connaddr, this.config.Timeout)
-	if err != nil {
-		logger.Errorf("Dial confuse domain fail, err:%v, domain:%s, protocol:%s, cost:%dms", err, connaddr, protocol, dur)
-		return
-	}
-	defer func() {
-		remote.Close()
-	}()
-	logger.Infof("Dial confuse domain success, dst conn:%s, protocol:%s, domain:%s, cost:%dms", remote.RemoteAddr(), protocol, connaddr, dur)
-	ctx, cancel := context.WithCancel(context.Background())
-	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
-	wbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
-	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
-	logger.Infof("Confuse ata transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
-		sr, sw, dr, dw, sre, swe, dre, dwe)
+	r, w, err := redirect_delegate.Process(this.config.Redirect.Redirector, conn)
+	log.Infof("Process err redirect success, redirector:%s, r:%d, w:%d, err:%v, conn:%s, session:%d", this.config.Redirect.Redirector, r, w, err, conn.RemoteAddr(), sessionid)
 }
 
 //上报当前的用户访问信息
