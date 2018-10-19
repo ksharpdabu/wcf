@@ -189,7 +189,7 @@ google.com,proxy
 
 #### 观察者配置
 
-##### sqlite3 观察者的配置(需要启用CGO)
+##### sqlite3 观察者的配置
 以json进行配置, 主要有下面几个项
 
 ```json
