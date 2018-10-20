@@ -127,12 +127,16 @@ func NewRule(file string) (*Rule, error) {
 	return r, nil
 }
 
-func(this *Rule) GetHostRule(addr string) (*RouteInfo) {
-	v, _ := this.CheckAndGetRule(addr)
+func(this *Rule) GetHostRuleOptional(addr string, safe bool) (*RouteInfo) {
+	v, _ := this.CheckAndGetRuleOptional(addr, safe)
 	return v
 }
 
-func(this *Rule) CheckAndGetRule(addr string) (*RouteInfo, bool) {
+func(this *Rule) GetHostRule(addr string) (*RouteInfo) {
+	return this.GetHostRuleOptional(addr, true)
+}
+
+func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (*RouteInfo, bool) {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	ip := net.ParseIP(addr)
@@ -149,12 +153,14 @@ func(this *Rule) CheckAndGetRule(addr string) (*RouteInfo, bool) {
 				}
 				tmpaddr = tmpaddr[index + 1:]
 			}
-			newip, err := net.ResolveIPAddr("ip", addr)
-			if err != nil {
-				log.Errorf("Resolve ip addr err, domain addr:%s, err:%v", addr, err)
-				break
+			if safe {  //正常来说, 客户端做这个检查毫无意义, 除了拖慢速度, 所以弄成可选的。
+				newip, err := net.ResolveIPAddr("ip", addr)
+				if err != nil {
+					log.Errorf("Resolve ip addr err, domain addr:%s, err:%v", addr, err)
+					break
+				}
+				ip = newip.IP
 			}
-			ip = newip.IP
 		}
 		if v, ok :=this.domain[addr]; ok {
 			return v, true
@@ -167,4 +173,8 @@ func(this *Rule) CheckAndGetRule(addr string) (*RouteInfo, bool) {
 		break
 	}
 	return defaultInfo, false
+}
+
+func(this *Rule) CheckAndGetRule(addr string) (*RouteInfo, bool) {
+	return this.CheckAndGetRuleOptional(addr, true)
 }

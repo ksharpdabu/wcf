@@ -79,7 +79,8 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var err error
 	var connAddr string
 	var protocol string
-	vinfo := this.rule.GetHostRule(conn.GetTargetName())
+	//取消本地dns查询, 加快连接速度。
+	vinfo := this.rule.GetHostRuleOptional(conn.GetTargetName(), false)
 	if vinfo.HostRule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
 		protocol = extra.(string)
@@ -143,7 +144,7 @@ func(this *LocalClient) Start() error {
 			continue
 		}
 		acceptor.AddHostHook(func(addr string, port uint16, addrType int) (bool, string, uint16, int) {
-			vinfo := this.rule.GetHostRule(addr)
+			vinfo := this.rule.GetHostRuleOptional(addr, false)
 			rewrite := addr
 			if len(vinfo.NewHostValue) != 0 {
 				rewrite = vinfo.NewHostValue
