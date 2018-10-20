@@ -158,7 +158,7 @@ google.com,proxy
 * tcp_tls 说白了就是tls, 这个协议主要是用于伪装https
 * * pem_file pem文件或者crt文件都ok
 * * key_file 私钥文件
-* * skip_insecure 当证书错误的时候是否中断, false为不中断
+* * skip_insecure 当证书错误的时候是否中断, true为不中断
 
 #### 重定向配置
 目前使用json作为配置, 结构如下, 每个重定向器都有自己的参数配置, 在server启动时进行加载。
