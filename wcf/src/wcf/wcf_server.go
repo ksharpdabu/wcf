@@ -136,13 +136,14 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 		return
 	}
 	ui := this.userinfo.GetUserInfo(conn.GetUser())
+	uiCtx := GetOrCreateContext(ui)
 	var curconn int
 	var ok bool
-	if curconn, ok = ui.ConnLimiter.TryAcqure(); !ok {
+	if curconn, ok = uiCtx.Limit.TryAcqure(); !ok {
 		logger.Infof("User:%s reach max connection:%d, close it", ui.User, ui.MaxConnection)
 		return
 	}
-	defer ui.ConnLimiter.Release()
+	defer uiCtx.Limit.Release()
 	logger.Infof("Recv new connection from remote success, current connections:%d", curconn)
 	var remote net.Conn
 	var err error
@@ -183,7 +184,11 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	rbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
 	wbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
 	ctx, cancel := context.WithCancel(context.Background())
-	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
+	var transconn net.Conn = conn
+	if ui.Speed.Enable {
+		transconn = NewSpeedConn(conn, ui.Speed.PerConn.Read, ui.Speed.PerConn.Write)
+	}
+	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(transconn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)
 	this.report(conn.GetUser(), conn.RemoteAddr().String(), address, int64(sr), int64(sw), visitStart, time.Now(), cost1 + cost2, logger)

@@ -17,12 +17,22 @@ type ForwardInfo struct {
 	ForwardAddr   string `json:"address"`
 }
 
+type RWSPInfo struct {
+	Read  int64 `json:"read"`
+	Write int64 `json:"write"`
+}
+
+type SpeedInfo struct {
+	Enable  bool     `json:"enable"`
+	PerConn RWSPInfo `json:"per_conn"`
+}
+
 type UserInfo struct {
 	User          string      `json:"user"`
 	Pwd           string      `json:"pwd"`
 	Forward       ForwardInfo `json:"forward"`
 	MaxConnection int         `json:"max_conn"`
-	ConnLimiter   Limiter
+	Speed         SpeedInfo   `json:"speed"`
 }
 
 type UserHolder struct {
@@ -82,11 +92,17 @@ func NewUserHolder(file string) (*UserHolder, error) {
 					log.Errorf("Parse user json fail, err:%v, line:%d, data:%s", err, index, string(line))
 					return nil, err
 				}
-				if ui.MaxConnection == 0 {
+				if ui.MaxConnection <= 0 {
 					ui.MaxConnection = 200
 				}
+				if ui.Speed.PerConn.Read <= 0 {
+					ui.Speed.PerConn.Read = 500
+				}
+				if ui.Speed.PerConn.Write <= 0 {
+					ui.Speed.PerConn.Write = 500
+				}
+				//业务逻辑相关的代码移到usercontext去搞, 这里只读配置
 				log.Infof("Read user:%+v from file", ui)
-				ui.ConnLimiter.Reset(ui.MaxConnection, ui.MaxConnection)
 				tmp[ui.User] = ui
 			}
 			return tmp, nil
@@ -97,8 +113,11 @@ func NewUserHolder(file string) (*UserHolder, error) {
 				defer r.mu.Unlock()
 				//简单处理, 更新部分用户数据的时候重置所有用户数据, 不然要写到吐血
 				r.userinfo = result.(map[string]*UserInfo)
+				log.Infof("Reload userinfo from file:%s, success, size:%d", addr, len(r.userinfo))
+			} else {
+				log.Errorf("Reload userinfo from file:%s fail, err:%v", addr, err)
 			}
-			log.Infof("Reload userinfo from file:%s, success, size:%d", addr, len(result.(map[string]*UserInfo)))
+
 		},
 		file,
 	)
