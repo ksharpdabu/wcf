@@ -220,7 +220,7 @@ google.com,proxy
 #### 用户配置信息说明
 以json line方式进行配置, 一行一个用户。
 ```json
-{"user":"test", "pwd":"xxx", "forward":{"enable":true, "address":"127.0.0.1:8000"}, "max_conn":100}
+{"user":"test", "pwd":"xxx", "forward":{"enable":true, "address":"127.0.0.1:8000"}, "max_conn":100, "speed":{"enable":true, "per_conn":{"read":200, "write":200}}}
 {"user":"hello", "pwd":"world", "forward":{"enable":false}}
 {"user":"xxxtc", "pwd":"hahaa"}
 ```
@@ -231,6 +231,11 @@ google.com,proxy
 * * enable 启用透传
 * * address 链接指向
 * max_conn 指定该用户最大的链接数,避免把server端拖崩, 不建议设置太小, 会导致用户打不开页面。
+* speed 速度限制相关
+* * enable 是否启用速度限制
+* * per_conn 针对单链接限速
+* * * read  读限速(单位为KB/s)
+* * * write 写限速(单位为KB/s)
 
 ## 启动命令
 ```
