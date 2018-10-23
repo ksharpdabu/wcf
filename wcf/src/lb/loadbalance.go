@@ -4,7 +4,7 @@ import (
 	"time"
 	"sync"
 	"math/rand"
-	"github.com/pkg/errors"
+	"errors"
 )
 
 //一个简易的负载均衡组件, 实现的比较挫, 考虑到每秒建立连接数的数量非常地低, 所以这个工具还是勉强能用的=.=
