@@ -2,10 +2,15 @@ language: go
 go:
     - 1.9
 
-
 install:
-    - ./get_all_package.sh
+    - go get -u github.com/juju/ratelimit
+    - go get -u github.com/sirupsen/logrus
+    - go get -u github.com/mattn/go-sqlite3
+    - go get -u github.com/golang/protobuf/proto
+    - go get -u github.com/xtaci/kcp-go
+    - go get -u github.com/xtaci/smux
     
 script:
+    - chmod +x ./build_all.sh
     - ./build_all.sh
 
