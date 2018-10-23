@@ -20,7 +20,7 @@ go build
 cd src/wcf/cmd/server 
 go build
 ```
-编译完会在local和server目录下分别生成对应的可执行文件, 如果不知道怎么编译的,可以使用releases目录下已经生成好的文件。
+编译完会在local和server目录下分别生成对应的可执行文件, 如果不知道怎么编译的,可以到 [发布页](https://github.com/xxxsen/wcf/releases) 下载已经生成好的文件。
 
 ## 服务配置
 ### 本地端
