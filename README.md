@@ -110,9 +110,6 @@ google.com,proxy
 * encrypt/key 加密方式与加密key, 需要保持与客户端一致
 * host 同client配置
 * transport 协议配置, 正常来说可以不用管, 有个transport.json 直接指定就可以了, 配置项说明见下面。
-* err_redirect 用于当协议错误的时候进行转发
-* * protocol 转发使用的协议
-* * address 转发到此地址上
 * report 用于上报用户的访问数据
 * * enable 是否启用
 * * visitor 使用的观察者, 目前能使用的有json和sqlite3, 观察者的配置可以看后面
