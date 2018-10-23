@@ -1,0 +1,11 @@
+language: go
+go:
+    - 1.9
+
+
+install:
+    - ./get_all_package.sh
+    
+script:
+    - ./build_all.sh
+
