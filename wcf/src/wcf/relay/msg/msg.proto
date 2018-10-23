@@ -19,7 +19,7 @@ enum AuthResult {
 
 message RelayAddress {
     optional int32 address_type = 1;  //refer AddressType
-    optional string address = 2;
+//    optional string address = 2;
     optional string name = 3;
     optional uint32 port = 4;
 }

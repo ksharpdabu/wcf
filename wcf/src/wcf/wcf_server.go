@@ -87,8 +87,9 @@ func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint3
 	defer func() {
 		conn.Close()
 	}()
+	log.Infof("Conn:%s reach err branch, errmsg:%s, sessionid:%d", conn.RemoteAddr(), conn.GetHandshakeErrmsg(), sessionid)
 	if !this.config.Redirect.Enable {
-		log.Infof("Redirect config not set, close it, sessionid:%d, conn:%s", sessionid, conn.RemoteAddr())
+		log.Errorf("Redirect config not set, close it, sessionid:%d, conn:%s", sessionid, conn.RemoteAddr())
 		return
 	}
 	r, w, err := redirect_delegate.Process(this.config.Redirect.Redirector, conn)

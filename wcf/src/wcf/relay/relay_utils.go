@@ -15,7 +15,7 @@ func CheckRelayPacketReadyWithLength(data []byte, maxBytes uint32) (int, error) 
 	}
 	total := binary.BigEndian.Uint32(data)
 	if total > maxBytes {
-		return -1, errors.New(fmt.Sprintf("should less than:%d, get:%d", MAX_BYTE_PER_PACKET, total))
+		return -1, errors.New(fmt.Sprintf("should less than:%d, get:%d", maxBytes, total))
 	}
 	if data[4] != 0x2 {
 		return -3, errors.New(fmt.Sprintf("packet delims err, start:%d", int(data[4])))
@@ -72,7 +72,6 @@ func BuildAuthReqMsg(config *RelayConfig) []byte {
 	req.User = proto.String(config.User)
 	req.Address = &msg.RelayAddress{
 		AddressType:proto.Int32(config.Address.AddrType),
-		Address:proto.String(config.Address.Addr),
 		Name:proto.String(config.Address.Name),
 		Port:proto.Uint32(uint32(config.Address.Port)),
 	}

@@ -15,7 +15,8 @@ import (
 	//log "github.com/sirupsen/logrus"
 )
 
-const MAX_BYTE_AUTH_PACKET uint32 = 128
+//socks5中带的域名最大就256字节, 其他杂七杂八的数据应该也就128字节差不多了吧？
+const MAX_BYTE_AUTH_PACKET uint32 = 256 + 128
 const MAX_BYTE_PER_PACKET uint32 = 64 * 1024
 const ONE_PER_BUFFER_SIZE uint32 = MAX_BYTE_PER_PACKET + 1024
 
@@ -151,10 +152,10 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 		return nil, errors.New(fmt.Sprintf("invalid user/pwd, user:%s, pwd:%s, conn:%s",
 			auth.GetUser(), auth.GetPwd(), conn.RemoteAddr()))
 	}
-	if len(auth.GetAddress().GetAddress()) == 0 || len(auth.GetAddress().GetName()) == 0 || auth.GetAddress().GetPort() == 0 {
+	if len(auth.GetAddress().GetName()) == 0 || auth.GetAddress().GetPort() == 0 {
 		net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_INVALID_ADDRESS), cn.token)))
-		return nil, errors.New(fmt.Sprintf("invalid address:%s/name:%s/port:%d, user:%s, conn:%s",
-			auth.GetAddress().GetAddress(), auth.GetAddress().GetName(), auth.GetAddress().GetPort(),
+		return nil, errors.New(fmt.Sprintf("invalid name:%s/port:%d, user:%s, conn:%s",
+			auth.GetAddress().GetName(), auth.GetAddress().GetPort(),
 				auth.GetUser(), conn.RemoteAddr()))
 	}
 	err := net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_OK), cn.token)))
@@ -167,7 +168,7 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 	} else {
 		spare = buf[ckResult:index]
 	}
-	cn.targetAddress = auth.GetAddress().GetAddress()
+	cn.targetAddress = fmt.Sprintf("%s:%d", auth.GetAddress().GetName(), auth.GetAddress().GetPort())
 	cn.targetType = auth.GetAddress().GetAddressType()
 	cn.user = auth.GetUser()
 	cn.targetName = auth.GetAddress().GetName()
