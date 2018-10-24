@@ -157,7 +157,7 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 		address = ui.Forward.ForwardAddr
 
 	} else { //default proxy
-		address = fmt.Sprintf("%s:%d", conn.GetTargetName(), conn.GetTargetPort())
+		address = fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort())
 		vinfo := this.host.GetHostRule(conn.GetTargetName())
 		if vinfo.HostRule == check.RULE_BLOCK {
 			logger.Errorf("User:%s visit site:%s not allow, skip", conn.GetUser(), conn.GetTargetName())
@@ -165,7 +165,7 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 			return
 		}
 		if len(vinfo.NewHostValue) != 0 { //vinfo.NewHostValue must be domain or ip, could not be cidr!!!!!!!
-			address = fmt.Sprintf("%s:%d", vinfo.NewHostValue, conn.GetTargetPort())
+			address = fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(vinfo.NewHostValue), conn.GetTargetPort())
 		}
 	}
 	var cost1 int64

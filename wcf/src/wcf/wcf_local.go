@@ -15,6 +15,7 @@ import (
 	"proxy_delegate"
 	"mix_delegate"
 	"transport_delegate"
+	"fmt"
 )
 
 type LocalClient struct {
@@ -90,7 +91,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		}
 		connAddr = newConnAddr
 	} else {
-		connAddr = conn.GetTargetAddress()
+		connAddr = fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort())
 		protocol = "tcp"
 	}
 	var dur int64

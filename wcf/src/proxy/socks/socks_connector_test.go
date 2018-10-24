@@ -7,7 +7,7 @@ import (
 )
 
 func TestProxy(t *testing.T) {
-	conn, err := proxy.DialTimeout("socks", "solidot.org:80", "127.0.0.1:8010", time.Second * 5)
+	conn, err := proxy.DialTimeout("socks", "[::1]:1080", "127.0.0.1:8010", time.Second * 5)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -137,6 +137,10 @@ func(this *Rule) GetHostRule(addr string) (*RouteInfo) {
 }
 
 func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (*RouteInfo, bool) {
+	addr = strings.Trim(addr, "\r\n\t ")
+	if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") {
+		addr = addr[1:len(addr) - 1]
+	}
 	this.mu.RLock()
 	defer this.mu.RUnlock()
 	ip := net.ParseIP(addr)

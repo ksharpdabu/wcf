@@ -165,6 +165,21 @@ func RecvSpecLen(conn net.Conn, buf []byte) error {
 	return nil
 }
 
+func ResolveRealAddr(addr string) string {
+	var name = strings.Trim(addr, "\t\n \r")
+	if ip := net.ParseIP(name); ip != nil {
+		if ip.To4() == nil { //v6
+			if !strings.HasPrefix(name, "[") {
+				name = "[" + name
+			}
+			if !strings.HasSuffix(name, "]") {
+				name = name + "]"
+			}
+		}
+	}
+	return name
+}
+
 func SendSpecLen(conn net.Conn, buf[]byte) error {
 	total := len(buf)
 	index := 0
