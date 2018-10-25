@@ -12,7 +12,40 @@ import (
 	//log "github.com/sirupsen/logrus"
 	"errors"
 	"fmt"
+	"math"
+	"math/big"
 )
+
+func ResolveIPRange(cidr string) (uint32, uint32) {
+	if !strings.Contains(cidr, "/") {
+		v := InetAtoN(cidr)
+		return v, v
+	}
+	items := strings.Split(cidr, "/")
+	mask, _ := strconv.ParseInt(items[1], 10, 32)
+	mask = 32 - mask
+	srcIp := InetAtoN(items[0])
+	mask4Or := uint32(math.Pow(2, float64(mask)) - 1)
+	maxIp := srcIp | mask4Or
+	mask4And := mask4Or ^ 0xFFFFFFFF
+	minIp := srcIp & mask4And
+	return minIp, maxIp
+}
+
+func InetAtoN(ip string) uint32 {
+	return InetAtoNBytes(net.ParseIP(ip).To4())
+}
+
+func InetAtoNBytes(ip []byte) uint32 {
+	ret := big.NewInt(0)
+	ret.SetBytes(ip)
+	return uint32(ret.Uint64())
+}
+
+func InetNtoA(ip uint32) string {
+	return fmt.Sprintf("%d.%d.%d.%d",
+		byte(ip>>24), byte(ip>>16), byte(ip>>8), byte(ip))
+}
 
 func IsDone(ctx context.Context) bool {
 	select {
@@ -151,19 +184,19 @@ func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
 	}
 }
 
-func RecvSpecLen(conn net.Conn, buf []byte) error {
-	total := len(buf)
-	index := 0
-	for ; index < total; {
-		cur, err := conn.Read(buf[index:])
-		//log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
-		if err != nil {
-			return err
-		}
-		index += cur
-	}
-	return nil
-}
+//func RecvSpecLen(conn net.Conn, buf []byte) error {
+//	total := len(buf)
+//	index := 0
+//	for ; index < total; {
+//		cur, err := conn.Read(buf[index:])
+//		//log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
+//		if err != nil {
+//			return err
+//		}
+//		index += cur
+//	}
+//	return nil
+//}
 
 func ResolveRealAddr(addr string) string {
 	var name = strings.Trim(addr, "\t\n \r")

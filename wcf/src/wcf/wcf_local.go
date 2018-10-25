@@ -45,15 +45,6 @@ func NewClient(config *LocalConfig) *LocalClient {
 	return cli
 }
 
-func isDone(ctx context.Context) bool {
-	select {
-	case <- ctx.Done():
-		return true
-	default:
-		return false
-	}
-}
-
 type RemoteDialFunc func(protocol string, addr string, timeout time.Duration) (net.Conn, error)
 
 func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, network string) {
@@ -81,8 +72,8 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var connAddr string
 	var protocol string
 	//取消本地dns查询, 加快连接速度。
-	vinfo := this.rule.GetHostRuleOptional(conn.GetTargetName(), false)
-	if vinfo.HostRule == check.RULE_PROXY {
+	rule := this.rule.GetHostRuleOptional(conn.GetTargetName(), false)
+	if rule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
 		protocol = extra.(string)
 		if err != nil {
@@ -96,7 +87,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	}
 	var dur int64
 	remote, err, dur = transport_delegate.Dial(protocol, connAddr, this.config.Timeout)
-	if this.config.Lbinfo.Enable && vinfo.HostRule == check.RULE_PROXY {
+	if this.config.Lbinfo.Enable && rule == check.RULE_PROXY {
 		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
 		this.lb.Update(connAddr, err == nil)
 	}
@@ -108,7 +99,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		remote.Close()
 	}()
 	var token uint32 = 0
-	if vinfo.HostRule == check.RULE_PROXY {  //only proxy mode should wrap this layer
+	if rule == check.RULE_PROXY {  //only proxy mode should wrap this layer
 		newConn, err := mix_delegate.Wrap(this.config.Encrypt, this.config.Key, remote)
 		if err != nil {
 			logger.Errorf("Wrap connection with mix method:%s fail, err:%v, conn:%s", this.config.Encrypt, err, remote.RemoteAddr())
@@ -145,15 +136,11 @@ func(this *LocalClient) Start() error {
 			continue
 		}
 		acceptor.AddHostHook(func(addr string, port uint16, addrType int) (bool, string, uint16, int) {
-			vinfo := this.rule.GetHostRuleOptional(addr, false)
-			rewrite := addr
-			if len(vinfo.NewHostValue) != 0 {
-				rewrite = vinfo.NewHostValue
+			rule := this.rule.GetHostRuleOptional(addr, false)
+			if rule == check.RULE_BLOCK {
+				return false, addr, port, addrType
 			}
-			if vinfo.HostRule == check.RULE_BLOCK {
-				return false, rewrite, port, addrType
-			}
-			return true, rewrite, port, addrType
+			return true, addr, port, addrType
 		})
 		go func(netw string, acc proxy.ProxyListener, addr string) {
 			defer func() {
