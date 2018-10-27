@@ -21,6 +21,18 @@ const (
 	RULE_PROXY = 2
 )
 
+func HostRule2String(rule HostRule) string {
+	if rule == 0 {
+		return "block"
+	} else if rule == 1 {
+		return "direct"
+	} else if rule == 2 {
+		return "proxy"
+	} else {
+		return "unknow"
+	}
+}
+
 type HostRule int
 
 var defaultInfo = RULE_PROXY
@@ -75,6 +87,102 @@ func sortAndMerge(lst RouteList) RouteList {
 	return tmp
 }
 
+func(this *Rule) onCheck(addr string, v interface{}) (bool, interface{}) {
+	return reload.DefaultFileCheckModFunc(addr, v)
+}
+
+func(this *Rule) onLoad(addr string) (interface{}, error) {
+	file, err := os.Open(addr)
+	if err != nil {
+		log.Errorf("Open file:%s fail, err:%v", addr, err)
+		return nil, err
+	}
+	defer func() {
+		file.Close()
+	}()
+	r := bufio.NewReader(file)
+	tmp := make(map[string]interface{})
+	domain := make(map[string]HostRule)
+	cidr := make(map[*net.IPNet]HostRule)
+	routeV4 := make(map[int]RouteList)
+	tmp["domain"] = domain
+	tmp["cidr"] = cidr
+	tmp["route_v4"] = routeV4
+	for {
+		bline, _, err := r.ReadLine()
+		if err == io.EOF {
+			break
+		}
+		line := strings.ToLower(strings.Trim(string(bline), "\t \n\r"))
+		if strings.HasPrefix(line, "#") || len(line) == 0 {
+			continue
+		}
+		sp := strings.Split(line, ",")
+		if len(sp) < 2 {
+			log.Errorf("Invalid rule line:%s, format should like this `domain,op_type[,replace host]`", line)
+			continue
+		}
+		addr := sp[0]
+		op := 0
+		switch sp[1] {
+		case "proxy":
+			op = RULE_PROXY
+			break
+		case "direct":
+			op = RULE_DIRECT
+			break
+		case "block":
+			op = RULE_BLOCK
+			break
+		}
+		rt := HostRule(op)
+		if strings.Contains(addr, "/") { //cidr
+			ip, cidritem, err := net.ParseCIDR(addr)
+			if err != nil {
+				log.Errorf("Parse cidr fail, err:%v, addr:%s, line:%s", err, addr, line)
+				continue
+			}
+			if ip.To4() == nil {  //v6
+				cidr[cidritem] = rt
+			} else { //v4
+				st, ed := net_utils.ResolveIPRange(addr)
+				routeV4[op] = append(routeV4[op], &CIDRRange{st, ed, []string{addr}})
+			}
+		} else { //ip
+			domain[addr] = rt
+		}
+	}
+	for rule, lst := range routeV4 {
+		routeV4[rule] = sortAndMerge(lst)
+	}
+	return tmp, nil
+}
+
+func(this *Rule) onLoadSucc(addr string, result interface{}, err error) {
+	if err == nil {
+		this.mu.Lock()
+		defer this.mu.Unlock()
+		mp := result.(map[string]interface{})
+		this.domain = mp["domain"].(map[string]HostRule)
+		this.cidr = mp["cidr"].(map[*net.IPNet]HostRule)
+		this.routeV4 = mp["route_v4"].(map[int]RouteList)
+		log.Infof("Reload host from file:%s, success, domain:%d, v6cidr:%d, v4route:[block:%d, direct:%d, proxy:%d]", addr, len(this.domain), len(this.cidr), len(this.routeV4[0]), len(this.routeV4[1]), len(this.routeV4[2]))
+	} else {
+		log.Errorf("Reload host from file:%s fail, err:%v", this.file, err)
+	}
+}
+
+func(this *Rule) AddDomainRule(addr string, rule HostRule) {
+	this.mu.Lock()
+	defer this.mu.Unlock()
+	this.domain[addr] = rule
+}
+
+func NewRuleStatic() (*Rule, error) {
+	r := &Rule{domain:make(map[string]HostRule)} //dont add cidr into this config
+	return r, nil
+}
+
 func NewRule(file string) (*Rule, error) {
 	r := &Rule{file:file, domain:make(map[string]HostRule), cidr:make(map[*net.IPNet]HostRule)}
 	if len(file) == 0 {
@@ -86,88 +194,9 @@ func NewRule(file string) (*Rule, error) {
 	}
 	rd := reload.New()
 	err, wg := rd.AddLoad(
-		func(addr string, v interface{}) (bool, interface{}) {
-			return reload.DefaultFileCheckModFunc(addr, v)
-		},
-		func(addr string) (interface{}, error) {
-			file, err := os.Open(addr)
-			if err != nil {
-				log.Errorf("Open file:%s fail, err:%v", addr, err)
-				return nil, err
-			}
-			defer func() {
-				file.Close()
-			}()
-			r := bufio.NewReader(file)
-			tmp := make(map[string]interface{})
-			domain := make(map[string]HostRule)
-			cidr := make(map[*net.IPNet]HostRule)
-			routeV4 := make(map[int]RouteList)
-			tmp["domain"] = domain
-			tmp["cidr"] = cidr
-			tmp["route_v4"] = routeV4
-			for {
-				bline, _, err := r.ReadLine()
-				if err == io.EOF {
-					break
-				}
-				line := strings.ToLower(strings.Trim(string(bline), "\t \n\r"))
-				if strings.HasPrefix(line, "#") || len(line) == 0 {
-					continue
-				}
-				sp := strings.Split(line, ",")
-				if len(sp) < 2 {
-					log.Errorf("Invalid rule line:%s, format should like this `domain,op_type[,replace host]`", line)
-					continue
-				}
-				addr := sp[0]
-				op := 0
-				switch sp[1] {
-				case "proxy":
-					op = RULE_PROXY
-					break
-				case "direct":
-					op = RULE_DIRECT
-					break
-				case "block":
-					op = RULE_BLOCK
-					break
-				}
-				rt := HostRule(op)
-				if strings.Contains(addr, "/") { //cidr
-					ip, cidritem, err := net.ParseCIDR(addr)
-					if err != nil {
-						log.Errorf("Parse cidr fail, err:%v, addr:%s, line:%s", err, addr, line)
-						continue
-					}
-					if ip.To4() == nil {  //v6
-						cidr[cidritem] = rt
-					} else { //v4
-						st, ed := net_utils.ResolveIPRange(addr)
-						routeV4[op] = append(routeV4[op], &CIDRRange{st, ed, []string{addr}})
-					}
-				} else { //ip
-					domain[addr] = rt
-				}
-			}
-			for rule, lst := range routeV4 {
-				routeV4[rule] = sortAndMerge(lst)
-			}
-			return tmp, nil
-		},
-		func(addr string, result interface{}, err error) {
-			if err == nil {
-				r.mu.Lock()
-				defer r.mu.Unlock()
-				mp := result.(map[string]interface{})
-				r.domain = mp["domain"].(map[string]HostRule)
-				r.cidr = mp["cidr"].(map[*net.IPNet]HostRule)
-				r.routeV4 = mp["route_v4"].(map[int]RouteList)
-				log.Infof("Reload host from file:%s, success, domain:%d, v6cidr:%d, v4route:[block:%d, direct:%d, proxy:%d]", addr, len(r.domain), len(r.cidr), len(r.routeV4[0]), len(r.routeV4[1]), len(r.routeV4[2]))
-			} else {
-				log.Errorf("Reload host from file:%s fail, err:%v", file, err)
-			}
-		},
+		r.onCheck,
+		r.onLoad,
+		r.onLoadSucc,
 		file,
 	)
 	if err != nil {

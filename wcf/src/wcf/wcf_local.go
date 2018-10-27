@@ -22,6 +22,48 @@ type LocalClient struct {
 	config *LocalConfig
 	rule *check.Rule
 	lb *lb.LoadBalance
+	smartRule *check.Rule
+	hostQueue chan string
+}
+
+func(this *LocalClient) addToCheckRule(addr string) {
+	select {
+	case this.hostQueue <- addr:
+		break
+	default:
+		log.Errorf("Queue full, skip check addr:%s", addr)
+	}
+}
+
+func(this *LocalClient) autoCheckRule() {
+	limiter := NewLimiter(200)
+	for {
+		select {
+		case v := <-this.hostQueue:
+			used, result := limiter.TryAcqure()
+			log.Infof("Check host:%s, acqure result:%t, used:%d", v, result, used)
+			if result {
+				go func() {
+					conn, err := net.DialTimeout("tcp", v, 1 * time.Second)
+					if err == nil {
+						conn.Close()
+					}
+					limiter.Release()
+					if host, _, serr := net.SplitHostPort(v); serr == nil {
+						var stat = check.RULE_DIRECT
+						if err != nil {
+							stat = check.RULE_PROXY
+						}
+						log.Infof("Add auto proxy rule, addr:%s, rule:%s, err:%v", host, check.HostRule2String(check.HostRule(stat)), err)
+						this.smartRule.AddDomainRule(host, check.HostRule(stat))
+					} else {
+						log.Infof("Check host finish, but split host fail, host addr:%s", v)
+					}
+				}()
+			}
+			break
+		}
+	}
 }
 
 func NewClient(config *LocalConfig) *LocalClient {
@@ -36,6 +78,12 @@ func NewClient(config *LocalConfig) *LocalClient {
 		}
 	} else {
 		cli.rule = rule
+	}
+	if cli.config.SmartProxy {
+		smart, _ := check.NewRuleStatic()
+		cli.smartRule = smart
+		cli.hostQueue = make(chan string, 200)
+		go cli.autoCheckRule()
 	}
 	cli.lb = lb.New(cli.config.Lbinfo.MaxErrCnt, cli.config.Lbinfo.MaxFailTime)
 	for _, v := range cli.config.Proxyaddr {
@@ -72,7 +120,17 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var connAddr string
 	var protocol string
 	//取消本地dns查询, 加快连接速度。
-	rule := this.rule.GetHostRuleOptional(conn.GetTargetName(), false)
+	rule, ck := this.rule.CheckAndGetRuleOptional(conn.GetTargetName(), false)
+	if !ck && this.config.SmartProxy { //原有规则没有。。那么再走一遍智能代理的规则
+		rule, ck = this.smartRule.CheckAndGetRuleOptional(conn.GetTargetName(), false)
+		if !ck { //只能代理还没有, 那就走规则校验逻辑
+			this.addToCheckRule(fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort()))
+		} else {
+			logger.Infof("Host:%s hit smart config rule, rule:%s", conn.GetTargetName(), check.HostRule2String(rule))
+		}
+	} else {
+		logger.Infof("Host:%s hit config rule, rule:%s", conn.GetTargetName(), check.HostRule2String(rule))
+	}
 	if rule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
 		protocol = extra.(string)
