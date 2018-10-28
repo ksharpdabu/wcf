@@ -172,17 +172,6 @@ func(this *Rule) onLoadSucc(addr string, result interface{}, err error) {
 	}
 }
 
-func(this *Rule) AddDomainRule(addr string, rule HostRule) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-	this.domain[addr] = rule
-}
-
-func NewRuleStatic() (*Rule, error) {
-	r := &Rule{domain:make(map[string]HostRule)} //dont add cidr into this config
-	return r, nil
-}
-
 func NewRule(file string) (*Rule, error) {
 	r := &Rule{file:file, domain:make(map[string]HostRule), cidr:make(map[*net.IPNet]HostRule)}
 	if len(file) == 0 {

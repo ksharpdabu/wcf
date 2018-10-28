@@ -1,9 +1,12 @@
 package wcf
 
-import "sync"
+import (
+	"sync"
+	"limiter"
+)
 
 type UserContext struct {
-    Limit Limiter
+    Limit limiter.Limiter
 	Info *UserInfo
 }
 
