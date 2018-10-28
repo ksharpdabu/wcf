@@ -38,7 +38,8 @@ go build
 	},	
 	"proxyaddr":[
 		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"}
-	],	
+	],
+	"smart_proxy":true,
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":5,
@@ -56,6 +57,7 @@ go build
 * * addr 远程服务器地址
 * * weight 权重信息
 * * protocol 使用的协议
+* smart_proxy 启用智能代理, 实验性的, 会自动检测当前连接是否可以直连
 * user/pwd 鉴权用的用户名和密码
 * timeout 链接超时时间, 单位是秒
 * host 这个是用来配置本地host的, 一行一个配置,由域名, 操作类型, 替换域名(可选)组成, 例如baidu.com,proxy[,google.com], 分3种操作类型,block, proxy, direct, 分别代表黑名单(禁止链接), 走代理, 直连, 具体的可以看下面的配置

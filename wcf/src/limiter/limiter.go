@@ -1,4 +1,4 @@
-package wcf
+package limiter
 
 import "sync"
 
@@ -8,7 +8,7 @@ type Limiter struct {
 	lock sync.Mutex
 }
 
-//spare, could acqure
+//used, could acqure
 func(this *Limiter) TryAcqure() (int, bool) {
 	this.lock.Lock()
 	defer this.lock.Unlock()

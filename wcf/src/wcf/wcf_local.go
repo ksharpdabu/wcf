@@ -22,7 +22,9 @@ type LocalClient struct {
 	config *LocalConfig
 	rule *check.Rule
 	lb *lb.LoadBalance
+	smartRule *check.SmartRule
 }
+
 
 func NewClient(config *LocalConfig) *LocalClient {
 	cli := &LocalClient{}
@@ -36,6 +38,9 @@ func NewClient(config *LocalConfig) *LocalClient {
 		}
 	} else {
 		cli.rule = rule
+	}
+	if cli.config.SmartProxy {
+		cli.smartRule = check.NewSmartHost()
 	}
 	cli.lb = lb.New(cli.config.Lbinfo.MaxErrCnt, cli.config.Lbinfo.MaxFailTime)
 	for _, v := range cli.config.Proxyaddr {
@@ -71,8 +76,20 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 	var err error
 	var connAddr string
 	var protocol string
+	var smartRule bool
 	//取消本地dns查询, 加快连接速度。
-	rule := this.rule.GetHostRuleOptional(conn.GetTargetName(), false)
+	rule, ck := this.rule.CheckAndGetRuleOptional(conn.GetTargetName(), false)
+	if !ck && this.config.SmartProxy { //原有规则没有。。那么再走一遍智能代理的规则
+		rule, ck = this.smartRule.CheckAndGetRule(conn.GetTargetName())
+		if !ck { //只能代理还没有, 那就走规则校验逻辑
+			this.smartRule.AddToCheck(fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort()), false)
+		} else {
+			smartRule = true
+			logger.Infof("Host:%s hit smart config rule, rule:%s", conn.GetTargetName(), check.HostRule2String(rule))
+		}
+	} else {
+		logger.Infof("Host:%s hit config rule, rule:%s", conn.GetTargetName(), check.HostRule2String(rule))
+	}
 	if rule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
 		protocol = extra.(string)
@@ -91,7 +108,11 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
 		this.lb.Update(connAddr, err == nil)
 	}
+
 	if err != nil {
+		if smartRule {
+			this.smartRule.AddToCheck(connAddr, true)
+		}
 		logger.Errorf("Dial connection to target/proxy svr fail, err:%s, svr addr:%s, cost:%dms", err, connAddr, dur)
 		return
 	}

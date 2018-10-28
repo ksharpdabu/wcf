@@ -18,6 +18,7 @@ import (
 	"wcf/visit_delegate"
 	"wcf/visit"
 	"wcf/redirect_delegate"
+	"limiter"
 )
 
 type RemoteServer struct {
@@ -183,7 +184,7 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var transconn net.Conn = conn
 	if ui.Speed.Enable {
-		transconn = NewSpeedConn(conn, ui.Speed.PerConn.Read, ui.Speed.PerConn.Write)
+		transconn = limiter.NewSpeedConn(conn, ui.Speed.PerConn.Read, ui.Speed.PerConn.Write)
 	}
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(transconn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
