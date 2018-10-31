@@ -1,10 +1,10 @@
 package forward
 
 import (
-	"testing"
-	"net"
-	"time"
 	log "github.com/sirupsen/logrus"
+	"net"
+	"testing"
+	"time"
 )
 
 func handleProxy(conn net.Conn, t *testing.T) {
@@ -18,7 +18,7 @@ func handleProxy(conn net.Conn, t *testing.T) {
 		return
 	}
 	log.Infof("Recv:%s from client:%s", string(buf[:cnt]), conn.RemoteAddr())
-	cnt, err  = conn.Write(buf[:cnt])
+	cnt, err = conn.Write(buf[:cnt])
 	if err != nil {
 		log.Errorf("Write back:%s to remote err:%s, conn:%s", string(buf[:cnt]), err, conn.RemoteAddr())
 		return
@@ -42,7 +42,7 @@ func TestEchoSvr(t *testing.T) {
 }
 
 func TestEchoClient(t *testing.T) {
-	cli, err := net.DialTimeout("tcp", "127.0.0.1:8012", 2 * time.Second)
+	cli, err := net.DialTimeout("tcp", "127.0.0.1:8012", 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,5 +55,3 @@ func TestEchoClient(t *testing.T) {
 	log.Infof("Recv:%s", string(buf[:cnt]))
 
 }
-
-

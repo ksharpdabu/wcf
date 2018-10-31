@@ -1,12 +1,12 @@
 package transport
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"time"
-	"fmt"
-	"github.com/pkg/errors"
-	"io/ioutil"
-	"encoding/json"
 )
 
 type ParamPair struct {
@@ -34,8 +34,10 @@ func init() {
 
 //注册bind函数
 type BindFunc func(addr string, extra interface{}) (net.Listener, error)
+
 //注册dial函数
 type DialFunc func(addr string, timeout time.Duration, extra interface{}) (net.Conn, error)
+
 //用于从json数据构建对应的参数
 type InitFunc func(bindData []byte, dialData []byte) (interface{}, interface{}, error)
 
@@ -80,7 +82,7 @@ func InitAllProtocol(file string) error {
 		if err != nil {
 			return errors.New(fmt.Sprintf("init pt:%s fail, err:%v", k, err))
 		}
-		parammp[k] = &ParamPair{b,d}
+		parammp[k] = &ParamPair{b, d}
 	}
 	return nil
 }
@@ -143,4 +145,3 @@ func Dial(pt string, addr string, timeout time.Duration) (net.Conn, error) {
 	}
 	return nil, errors.New(fmt.Sprintf("dial protocol:%s not regist", pt))
 }
-

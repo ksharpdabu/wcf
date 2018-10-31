@@ -1,21 +1,21 @@
 package wcf
 
 import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+	log "github.com/sirupsen/logrus"
+	"hash/crc32"
+	"net"
+	"net_utils"
+	"proxy/socks"
+	"sync"
 	"testing"
 	"time"
-	log "github.com/sirupsen/logrus"
-	"net"
-	"proxy/socks"
-	"encoding/binary"
-	"fmt"
-	"hash/crc32"
-	"net_utils"
-	"github.com/pkg/errors"
-	"sync"
 )
 
 func TestConnect(t *testing.T) {
-	conn, err := net.DialTimeout("tcp", "www.pin-cong.com:443", 2 * time.Second)
+	conn, err := net.DialTimeout("tcp", "www.pin-cong.com:443", 2*time.Second)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,9 +41,9 @@ func getFrameData(data []byte) ([]byte, int, error, uint32, uint32) {
 	if total <= 0 {
 		return nil, 0, errors.New("data invalid"), 0, 0
 	}
-	buf := make([]byte, total - 8)
-	copy(buf, data[4:total - 4])
-	crc := binary.BigEndian.Uint32(data[total - 4:])
+	buf := make([]byte, total-8)
+	copy(buf, data[4:total-4])
+	crc := binary.BigEndian.Uint32(data[total-4:])
 	c := crc32.Checksum(buf, crc32.IEEETable)
 	if c != crc {
 		return nil, 0, errors.New("crc invalid"), 0, 0
@@ -57,7 +57,7 @@ func buildFrameData(data []byte) []byte {
 	binary.BigEndian.PutUint32(buf, uint32(total))
 	copy(buf[4:], data)
 	crc := crc32.Checksum(data, crc32.IEEETable)
-	binary.BigEndian.PutUint32(buf[total - 4:], crc)
+	binary.BigEndian.PutUint32(buf[total-4:], crc)
 	return buf
 }
 
@@ -90,7 +90,7 @@ func TestSendBack(t *testing.T) {
 					log.Errorf("write err:%v", err)
 					return
 				}
-				log.Infof("write %d char cost:%d", cnt, time.Now().Sub(start) / time.Millisecond)
+				log.Infof("write %d char cost:%d", cnt, time.Now().Sub(start)/time.Millisecond)
 			}
 		}(conn)
 	}
@@ -98,7 +98,7 @@ func TestSendBack(t *testing.T) {
 
 func TestSRLittle(t *testing.T) {
 	log.Infof("connect start:%v", time.Now())
-	conn, err := socks.DialWithTimeout("127.0.0.1:8807", "127.0.0.1:8010", time.Second * 3)
+	conn, err := socks.DialWithTimeout("127.0.0.1:8807", "127.0.0.1:8010", time.Second*3)
 	log.Infof("connect cost:%v", time.Now())
 	if err != nil {
 		log.Fatal(err)
@@ -125,7 +125,7 @@ func TestSRLittle(t *testing.T) {
 		index := 0
 		fRead := false
 		for {
-			conn.SetReadDeadline(time.Now().Add(5 *time.Second))
+			conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 			cnt, err := conn.Read(buf[index:])
 			if err != nil {
 				log.Errorf("err:%v, index:%d", err, index)
@@ -162,8 +162,8 @@ func TestSRLittle(t *testing.T) {
 func TestStart(t *testing.T) {
 	cfg := LocalConfig{}
 	cfg.Timeout = 5 * time.Second
-	cfg.Proxyaddr = []ProxyAddrInfo {ProxyAddrInfo{"127.0.0.1:8020", 50, "tcp"}}
-	cfg.Localaddr = append(cfg.Localaddr, AddrConfig{Name:"socks", Address:"127.0.0.1:8010"})
+	cfg.Proxyaddr = []ProxyAddrInfo{ProxyAddrInfo{"127.0.0.1:8020", 50, "tcp"}}
+	cfg.Localaddr = append(cfg.Localaddr, AddrConfig{Name: "socks", Address: "127.0.0.1:8010"})
 	cfg.User = "test"
 	cfg.Pwd = "xxx"
 	cli := NewClient(&cfg)
@@ -172,4 +172,3 @@ func TestStart(t *testing.T) {
 		log.Fatal(err)
 	}
 }
-

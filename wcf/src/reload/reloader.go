@@ -1,11 +1,11 @@
 package reload
 
 import (
-	"time"
-	"sync"
 	"errors"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 )
 
 //on err return false
@@ -16,7 +16,7 @@ type LoadFinishFunc func(addr string, result interface{}, err error)
 func DefaultFileCheckModFunc(addr string, v interface{}) (bool, interface{}) {
 	var md time.Time
 	if v != nil {
-	md = v.(time.Time)
+		md = v.(time.Time)
 	}
 	s, err := os.Stat(addr)
 	if err != nil {
@@ -29,20 +29,20 @@ func DefaultFileCheckModFunc(addr string, v interface{}) (bool, interface{}) {
 }
 
 type ReloadInfo struct {
-	cm CheckModFunc
-	dl DataLoadFunc
-	lf LoadFinishFunc
-	file string
+	cm      CheckModFunc
+	dl      DataLoadFunc
+	lf      LoadFinishFunc
+	file    string
 	cmParam interface{}
-	wg *sync.WaitGroup
+	wg      *sync.WaitGroup
 }
 
 type AutoReload struct {
-	mu sync.RWMutex
-	store map[string] *ReloadInfo
+	mu       sync.RWMutex
+	store    map[string]*ReloadInfo
 	duration time.Duration
 	//
-	pmu sync.Mutex
+	pmu     sync.Mutex
 	peeding []*ReloadInfo
 }
 
@@ -53,7 +53,7 @@ func init() {
 	defaultLoader.Start()
 }
 
-func(this *AutoReload) Start() {
+func (this *AutoReload) Start() {
 	go func() {
 		for {
 			this.pmu.Lock()
@@ -89,16 +89,16 @@ func(this *AutoReload) Start() {
 
 func New() *AutoReload {
 	loader := &AutoReload{}
-	loader.store = make(map[string] *ReloadInfo)
+	loader.store = make(map[string]*ReloadInfo)
 	loader.duration = 5 * time.Second
 	return loader
 }
 
-func(this *AutoReload) SetDuration(ts time.Duration) {
+func (this *AutoReload) SetDuration(ts time.Duration) {
 	this.duration = ts
 }
 
-func(this *AutoReload) AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
+func (this *AutoReload) AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	if _, ok := this.store[file]; ok {
@@ -110,7 +110,7 @@ func(this *AutoReload) AddLoadSync(cm CheckModFunc, dl DataLoadFunc, lf LoadFini
 	return nil, ri.wg
 }
 
-func(this *AutoReload) AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
+func (this *AutoReload) AddLoad(cm CheckModFunc, dl DataLoadFunc, lf LoadFinishFunc, file string) (error, *sync.WaitGroup) {
 	this.pmu.Lock()
 	defer this.pmu.Unlock()
 	ri := &ReloadInfo{cm, dl, lf, file, nil, &sync.WaitGroup{}}

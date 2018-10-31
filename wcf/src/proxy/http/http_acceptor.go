@@ -1,14 +1,14 @@
 package http
 
 import (
-	"net"
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
-	"bytes"
+	"net"
+	"net/http"
 	"net_utils"
 	"proxy"
-	"net/http"
-	"bufio"
 )
 
 var PROXY_RSP_SUCC = []byte("HTTP/1.1 200 connection established\r\n\r\n")
@@ -20,10 +20,10 @@ func init() {
 }
 
 type HttpAddress struct {
-	Name string
-	Port uint16
+	Name     string
+	Port     uint16
 	AddrType int
-	Address string
+	Address  string
 	HttpType string
 }
 
@@ -31,10 +31,10 @@ type HttpConn struct {
 	address *HttpAddress
 	net.Conn
 	bReader *bufio.Reader
-	buffer []byte
+	buffer  []byte
 }
 
-func(this *HttpConn) Read(b []byte) (n int, err error) {
+func (this *HttpConn) Read(b []byte) (n int, err error) {
 	if this.buffer == nil || len(this.buffer) == 0 {
 		return this.bReader.Read(b)
 	}
@@ -47,36 +47,36 @@ func(this *HttpConn) Read(b []byte) (n int, err error) {
 	return cnt, nil
 }
 
-func(this *HttpConn) GetTargetPort() uint16 {
+func (this *HttpConn) GetTargetPort() uint16 {
 	return this.address.Port
 }
 
-func(this *HttpConn) GetTargetAddress() string {
+func (this *HttpConn) GetTargetAddress() string {
 	return this.address.Address
 }
 
-func(this *HttpConn) GetTargetName() string {
+func (this *HttpConn) GetTargetName() string {
 	return this.address.Name
 }
 
-func(this *HttpConn) GetTargetType() int {
+func (this *HttpConn) GetTargetType() int {
 	return this.address.AddrType
 }
 
-func(this *HttpConn) GetHttpType() string {
+func (this *HttpConn) GetHttpType() string {
 	return this.address.HttpType
 }
 
 type HttpAcceptor struct {
-	listener net.Listener
+	listener       net.Listener
 	connectionList chan *proxy.ConnRecv
-	onHostCheck proxy.HostCheckFunc
+	onHostCheck    proxy.HostCheckFunc
 }
 
 func newAcceptorCtx() *HttpAcceptor {
 	sa := &HttpAcceptor{}
 	sa.connectionList = make(chan *proxy.ConnRecv, 5)
-	return sa;
+	return sa
 }
 
 func Bind(addr string) (proxy.ProxyListener, error) {
@@ -93,23 +93,23 @@ func WrapListener(listener net.Listener) (*HttpAcceptor, error) {
 	return sa, nil
 }
 
-func(this *HttpAcceptor) AddHostHook(fun proxy.HostCheckFunc) {
+func (this *HttpAcceptor) AddHostHook(fun proxy.HostCheckFunc) {
 	this.onHostCheck = fun
 }
 
-func(this *HttpAcceptor) reqToBytes(r *http.Request) []byte {
+func (this *HttpAcceptor) reqToBytes(r *http.Request) []byte {
 	var writer bytes.Buffer
 	r.Write(&writer)
 	return writer.Bytes()
 }
 
-func(this *HttpAcceptor) parseAddrPort(host string) (error, string, uint16) {
+func (this *HttpAcceptor) parseAddrPort(host string) (error, string, uint16) {
 	err, _, addr, port := net_utils.GetUrlInfo(host)
 	return err, addr, uint16(port)
 }
 
 //refer taosocks
-func(this *HttpAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
+func (this *HttpAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 	bReader := bufio.NewReader(conn)
 	req, err := http.ReadRequest(bReader)
 	if err != nil {
@@ -128,17 +128,17 @@ func(this *HttpAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 		return nil, errors.New(fmt.Sprintf("parse http addr/port fail, err:%v, host:%s", err, req.Host))
 	}
 	return &HttpConn{
-		Conn:conn,
-		address:&HttpAddress{Name:addr, Port:port, AddrType:proxy.ADDR_TYPE_DETERMING, Address:fmt.Sprintf("%s:%d", addr, port), HttpType:req.Method},
-		buffer:waitToSend, bReader:bReader,
-		}, nil
+		Conn:    conn,
+		address: &HttpAddress{Name: addr, Port: port, AddrType: proxy.ADDR_TYPE_DETERMING, Address: fmt.Sprintf("%s:%d", addr, port), HttpType: req.Method},
+		buffer:  waitToSend, bReader: bReader,
+	}, nil
 }
 
-func(this *HttpConn) GetTargetOPType() int {
+func (this *HttpConn) GetTargetOPType() int {
 	return proxy.OP_TYPE_PROXY
 }
 
-func(this *HttpAcceptor) Start() error {
+func (this *HttpAcceptor) Start() error {
 	if this.listener == nil {
 		return errors.New("no listener")
 	}
@@ -146,7 +146,7 @@ func(this *HttpAcceptor) Start() error {
 		for {
 			conn, err := this.listener.Accept()
 			if err != nil {
-				this.connectionList <- &proxy.ConnRecv{ nil, err }
+				this.connectionList <- &proxy.ConnRecv{nil, err}
 				continue
 			}
 			go func() {
@@ -163,7 +163,7 @@ func(this *HttpAcceptor) Start() error {
 	return nil
 }
 
-func(this *HttpAcceptor) Accept() (proxy.ProxyConn, error) {
+func (this *HttpAcceptor) Accept() (proxy.ProxyConn, error) {
 	if this.listener == nil {
 		return nil, errors.New("no listener")
 	}

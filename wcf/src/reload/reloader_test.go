@@ -24,4 +24,3 @@ func TestAutoReload(t *testing.T) {
 	AddLoad(Check, DataLoad, DataLoadFinish, "D:/GoPath/src/wcf/cmd/server/userinfo.dat")
 	time.Sleep(2 * time.Minute)
 }
-

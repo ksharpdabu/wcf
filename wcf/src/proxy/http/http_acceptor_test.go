@@ -2,16 +2,16 @@ package http
 
 import "testing"
 import (
+	"context"
 	log "github.com/sirupsen/logrus"
 	"net"
-	"time"
 	"net_utils"
-	"context"
 	"proxy"
+	"time"
 )
 
 func handleProxy(conn proxy.ProxyConn) {
-	remote, err := net.DialTimeout("tcp", conn.GetTargetAddress(), 5 * time.Second)
+	remote, err := net.DialTimeout("tcp", conn.GetTargetAddress(), 5*time.Second)
 	if err != nil {
 		log.Error(err)
 		return
@@ -19,7 +19,7 @@ func handleProxy(conn proxy.ProxyConn) {
 	src := make([]byte, 1024)
 	dst := make([]byte, 1024)
 	ctx, cancel := context.WithCancel(context.Background())
-	net_utils.Pipe(conn, remote, src, dst, ctx, cancel, 5 * time.Second)
+	net_utils.Pipe(conn, remote, src, dst, ctx, cancel, 5*time.Second)
 }
 
 func TestHttpAcceptor_Accept(t *testing.T) {

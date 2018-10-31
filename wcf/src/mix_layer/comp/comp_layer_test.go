@@ -1,9 +1,9 @@
 package comp
 
 import (
-	"testing"
-	"net"
 	log "github.com/sirupsen/logrus"
+	"net"
+	"testing"
 	"time"
 )
 
@@ -46,7 +46,7 @@ func TestSvr(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	cli, err := net.DialTimeout("tcp", "127.0.0.1:8555", 2 * time.Second)
+	cli, err := net.DialTimeout("tcp", "127.0.0.1:8555", 2*time.Second)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -65,4 +65,3 @@ func TestClient(t *testing.T) {
 	}
 	conn.Close()
 }
-

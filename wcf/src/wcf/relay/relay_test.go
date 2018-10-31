@@ -1,10 +1,10 @@
 package relay
 
 import (
-	"testing"
 	"github.com/sirupsen/logrus"
-	"time"
 	"sync"
+	"testing"
+	"time"
 )
 
 var server string = "127.0.0.1:8000"
@@ -56,7 +56,7 @@ func TestRelayConnect(t *testing.T) {
 			defer func() {
 				gp.Done()
 			}()
-			conn, err := DialWithTimeout(server, 1 * time.Second, cfg)
+			conn, err := DialWithTimeout(server, 1*time.Second, cfg)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -67,10 +67,7 @@ func TestRelayConnect(t *testing.T) {
 			buffer = buffer[0:cnt]
 			logrus.Printf("Recv data back from svr, data:%s", string(buffer))
 			conn.Close()
-		} ()
+		}()
 	}
 	gp.Wait()
 }
-
-
-

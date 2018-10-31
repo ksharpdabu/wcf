@@ -1,12 +1,12 @@
 package main
 
 import (
-	"wcf"
 	"flag"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	_ "net/http/pprof"
 	"transport_delegate"
+	"wcf"
 )
 
 var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/local.json", "config file")
@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Read config fail, err:%v, config:%s", err, *config)
 	}
-	if err :=transport_delegate.InitAllProtocol(cfg.TransportConfig); err != nil {
+	if err := transport_delegate.InitAllProtocol(cfg.TransportConfig); err != nil {
 		log.Fatalf("Init transport config fail, err:%v, config:%s", err, cfg.TransportConfig)
 	}
 	log.Infof("Config:%+v", cfg)

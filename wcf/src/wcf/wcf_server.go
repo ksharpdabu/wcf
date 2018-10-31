@@ -1,31 +1,31 @@
 package wcf
 
 import (
-	"wcf/relay"
-	log "github.com/sirupsen/logrus"
-	"net"
-	"context"
-	"mix_layer"
-	"fmt"
-	"proxy"
-	"net_utils"
 	"check"
-	"sync/atomic"
-	"sync"
-	"time"
-	"mix_delegate"
-	"transport_delegate"
-	"wcf/visit_delegate"
-	"wcf/visit"
-	"wcf/redirect_delegate"
+	"context"
+	"fmt"
+	log "github.com/sirupsen/logrus"
 	"limiter"
+	"mix_delegate"
+	"mix_layer"
+	"net"
+	"net_utils"
+	"proxy"
+	"sync"
+	"sync/atomic"
+	"time"
+	"transport_delegate"
+	"wcf/redirect_delegate"
+	"wcf/relay"
+	"wcf/visit"
+	"wcf/visit_delegate"
 )
 
 type RemoteServer struct {
-	config *ServerConfig
-	userinfo *UserHolder
-	host *check.Rule
-	visitor visit.Visitor
+	config      *ServerConfig
+	userinfo    *UserHolder
+	host        *check.Rule
+	visitor     visit.Visitor
 	reportQueue chan *visit.VisitInfo
 }
 
@@ -74,17 +74,17 @@ func NewServer(config *ServerConfig) *RemoteServer {
 	return cli
 }
 
-func(this *RemoteServer) asyncReport() {
+func (this *RemoteServer) asyncReport() {
 	if this.visitor == nil {
 		return
 	}
 	for {
-		info := <- this.reportQueue
+		info := <-this.reportQueue
 		this.visitor.OnView(info)
 	}
 }
 
-func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint32) {
+func (this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint32) {
 	defer func() {
 		conn.Close()
 	}()
@@ -98,40 +98,40 @@ func(this *RemoteServer) handleErrConnect(conn *relay.RelayConn, sessionid uint3
 }
 
 //上报当前的用户访问信息
-func(this *RemoteServer) report(user string, from string, visitHost string,
+func (this *RemoteServer) report(user string, from string, visitHost string,
 	read int64, write int64,
-		start time.Time, end time.Time, connectCost int64, logger *log.Entry) {
+	start time.Time, end time.Time, connectCost int64, logger *log.Entry) {
 	if this.visitor == nil {
 		return
 	}
 	visi := &visit.VisitInfo{
-		Name:user,
-		From:from,
-		Host:visitHost,
-		Read:read,
-		Write:write,
-		Start:start,
-		End:end,
-		ConnectCost:connectCost,
+		Name:        user,
+		From:        from,
+		Host:        visitHost,
+		Read:        read,
+		Write:       write,
+		Start:       start,
+		End:         end,
+		ConnectCost: connectCost,
 	}
 	select {
-		case this.reportQueue <- visi:
-			break
-		default:
-			logger.Errorf("Queue full, skip report user:%s visit info, host:%s", user, visitHost)
-			break
+	case this.reportQueue <- visi:
+		break
+	default:
+		logger.Errorf("Queue full, skip report user:%s visit info, host:%s", user, visitHost)
+		break
 	}
 }
 
-func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
+func (this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	defer conn.Close()
 	visitStart := time.Now()
 	logger := log.WithFields(log.Fields{
-		"local": conn.RemoteAddr(),
+		"local":  conn.RemoteAddr(),
 		"remote": conn.GetTargetAddress(),
-		"user": conn.GetUser(),
-		"id": sessionid,
-		"token": conn.GetToken(),
+		"user":   conn.GetUser(),
+		"id":     sessionid,
+		"token":  conn.GetToken(),
 	})
 	if conn.GetHandshakeResult() != true {
 		this.handleErrConnect(conn, sessionid)
@@ -151,7 +151,7 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	var err error
 	var address string
 	if conn.GetTargetOPType() == proxy.OP_TYPE_FORWARD {
-		if !ui.Forward.EnableForward || len(ui.Forward.ForwardAddr) == 0{
+		if !ui.Forward.EnableForward || len(ui.Forward.ForwardAddr) == 0 {
 			logger.Errorf("User no allaw use forward option or forward addr empty, skip, user:%s, addr:%s, conn:%s", ui.User, ui.Forward.ForwardAddr, conn.RemoteAddr())
 			return
 		}
@@ -169,13 +169,13 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	var cost2 int64
 	remote, err, cost1 = transport_delegate.Dial("tcp", address, this.config.Timeout)
 	if err != nil {
-		remote, err, cost2 = transport_delegate.Dial("tcp", address, this.config.Timeout / 2)
+		remote, err, cost2 = transport_delegate.Dial("tcp", address, this.config.Timeout/2)
 	}
 	if err != nil {
-		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%dms", err, address, conn.RemoteAddr(), cost1 + cost2)
+		logger.Errorf("Connect to remote svr failed, err:%s, remote addr:%s, conn:%s, cost:%dms", err, address, conn.RemoteAddr(), cost1+cost2)
 		return
 	}
-	logger.Infof("Connect to remote svr success, target:%s, cost:%dms", remote.RemoteAddr(), cost1 + cost2)
+	logger.Infof("Connect to remote svr success, target:%s, cost:%dms", remote.RemoteAddr(), cost1+cost2)
 	defer func() {
 		remote.Close()
 	}()
@@ -189,10 +189,10 @@ func(this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(transconn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)
-	this.report(conn.GetUser(), conn.RemoteAddr().String(), address, int64(sr), int64(sw), visitStart, time.Now(), cost1 + cost2, logger)
+	this.report(conn.GetUser(), conn.RemoteAddr().String(), address, int64(sr), int64(sw), visitStart, time.Now(), cost1+cost2, logger)
 }
 
-func(this *RemoteServer) Start() error {
+func (this *RemoteServer) Start() error {
 	var wg sync.WaitGroup
 	wg.Add(len(this.config.Localaddr))
 	for _, v := range this.config.Localaddr {

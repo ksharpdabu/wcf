@@ -1,11 +1,11 @@
 package wcf
 
 import (
-	"testing"
 	"github.com/sirupsen/logrus"
-	"time"
 	_ "net/http/pprof"
-//	"net/http"
+	"testing"
+	"time"
+	//	"net/http"
 	"io/ioutil"
 	"net/http"
 )

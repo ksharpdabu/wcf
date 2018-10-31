@@ -1,19 +1,19 @@
 package relay
 
 import (
-	"net"
 	"bytes"
-	"net_utils"
 	"errors"
 	"fmt"
+	"net"
+	"net_utils"
 )
 
 type RelayFrameConn struct {
 	net.Conn
-	rbuf bytes.Buffer
-	wbuf bytes.Buffer
+	rbuf  bytes.Buffer
+	wbuf  bytes.Buffer
 	rdbuf bytes.Buffer
-	rtmp []byte
+	rtmp  []byte
 }
 
 func WrapRelayFrameConn(conn net.Conn, rbuf []byte, wbuf []byte) *RelayFrameConn {
@@ -29,7 +29,7 @@ func WrapRelayFrameConn(conn net.Conn, rbuf []byte, wbuf []byte) *RelayFrameConn
 	return cn
 }
 
-func(this *RelayFrameConn) Read(b []byte) (int, error) {
+func (this *RelayFrameConn) Read(b []byte) (int, error) {
 	if this.rdbuf.Len() != 0 {
 		cnt := copy(b, this.rdbuf.Bytes())
 		this.rdbuf.Next(cnt)
@@ -63,9 +63,9 @@ func(this *RelayFrameConn) Read(b []byte) (int, error) {
 	return cnt, nil
 }
 
-func(this *RelayFrameConn) Write(b []byte) (int, error) {
-	if len(b) > 2 * int(MAX_BYTE_PER_PACKET) / 3 {
-		b = b[:len(b) * 2 / 3]
+func (this *RelayFrameConn) Write(b []byte) (int, error) {
+	if len(b) > 2*int(MAX_BYTE_PER_PACKET)/3 {
+		b = b[:len(b)*2/3]
 	}
 	pkt := BuildDataPacket(b)
 	err := net_utils.SendSpecLen(this.Conn, pkt)
@@ -75,7 +75,7 @@ func(this *RelayFrameConn) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func(this *RelayFrameConn) Close() error {
+func (this *RelayFrameConn) Close() error {
 	if this.rbuf.Len() != 0 || this.wbuf.Len() != 0 {
 		return errors.New(fmt.Sprintf("buffer spare, rs:%d, ws:%d", this.rbuf.Len(), this.wbuf.Len()))
 	}

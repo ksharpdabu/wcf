@@ -1,17 +1,17 @@
 package relay
 
 import (
-	"net"
 	"errors"
-	"net_utils"
 	"fmt"
-	"wcf/relay/msg"
 	"github.com/golang/protobuf/proto"
 	"math/rand"
-	"time"
 	"mix_layer"
+	"net"
+	"net_utils"
 	"strings"
+	"time"
 	"transport_delegate"
+	"wcf/relay/msg"
 	//log "github.com/sirupsen/logrus"
 )
 
@@ -25,71 +25,71 @@ type MixWrapFunc func(conn net.Conn) (mix_layer.MixConn, error)
 
 type connrecv struct {
 	conn *RelayConn
-	err error
+	err  error
 }
 
 type RelayAcceptor struct {
-	listener net.Listener
-	OnAuth AuthFunc
+	listener       net.Listener
+	OnAuth         AuthFunc
 	connectionList chan *connrecv
-	mixFunc MixWrapFunc
+	mixFunc        MixWrapFunc
 }
 
-func(this *RelayAcceptor) AddMixWrap(fun MixWrapFunc) {
+func (this *RelayAcceptor) AddMixWrap(fun MixWrapFunc) {
 	this.mixFunc = fun
 }
 
 type RelayConn struct {
 	targetAddress string
-	targetType int32
-	targetName string
-	targetPort uint32
-	targetOPType int32
+	targetType    int32
+	targetName    string
+	targetPort    uint32
+	targetOPType  int32
 	net.Conn
-	token uint32
-	user string
+	token     uint32
+	user      string
 	handshake bool
-	errmsg error
+	errmsg    error
 }
 
-func(this *RelayConn) GetHandshakeErrmsg() error {
+func (this *RelayConn) GetHandshakeErrmsg() error {
 	return this.errmsg
 }
 
-func(this *RelayConn) GetHandshakeResult() bool {
+func (this *RelayConn) GetHandshakeResult() bool {
 	return this.handshake
 }
 
-func(this *RelayConn) GetTargetName() string {
+func (this *RelayConn) GetTargetName() string {
 	return this.targetName
 }
 
-func(this *RelayConn) GetTargetPort() uint32 {
+func (this *RelayConn) GetTargetPort() uint32 {
 	return this.targetPort
 }
 
-func(this *RelayConn) GetTargetOPType() int32 {
+func (this *RelayConn) GetTargetOPType() int32 {
 	return this.targetOPType
 }
 
-func(this *RelayConn) GetUser() string {
+func (this *RelayConn) GetUser() string {
 	return this.user
 }
 
-func(this *RelayConn) GetTargetAddress() string {
+func (this *RelayConn) GetTargetAddress() string {
 	return this.targetAddress
 }
 
-func(this *RelayConn) GetTargetType() int32 {
+func (this *RelayConn) GetTargetType() int32 {
 	return this.targetType
 }
 
-func(this *RelayConn) GetToken() uint32 {
+func (this *RelayConn) GetToken() uint32 {
 	return this.token
 }
 
 func newRelayAcceptor() *RelayAcceptor {
-	return &RelayAcceptor{connectionList:make(chan *connrecv, 5)}
+	return &RelayAcceptor{connectionList: make(chan *connrecv, 5)}
 }
 
 func Bind(protocol string, address string) (*RelayAcceptor, error) {
@@ -109,7 +109,7 @@ func WrapListener(listener net.Listener) (*RelayAcceptor, error) {
 	return ra, nil
 }
 
-func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
+func (this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 	cn := &RelayConn{}
 	cn.Conn = nil
 	cn.token = rand.Uint32()
@@ -121,7 +121,7 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 	var ckErr error
 	var auth msg.AuthMsgReq
 	for {
-		for ; index < total ;{
+		for index < total {
 			cnt, err := conn.Read(buf[index:])
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("relay conn recv buf head fail, err:%v, conn:%s", err, conn.RemoteAddr()))
@@ -156,7 +156,7 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 		net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_INVALID_ADDRESS), cn.token)))
 		return nil, errors.New(fmt.Sprintf("invalid name:%s/port:%d, user:%s, conn:%s",
 			auth.GetAddress().GetName(), auth.GetAddress().GetPort(),
-				auth.GetUser(), conn.RemoteAddr()))
+			auth.GetUser(), conn.RemoteAddr()))
 	}
 	err := net_utils.SendSpecLen(conn, BuildDataPacket(BuildAuthRspMsg(int32(msg.AuthResult_AUTH_OK), cn.token)))
 	if err != nil {
@@ -179,7 +179,7 @@ func(this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 	return cn, nil
 }
 
-func(this *RelayAcceptor) Start() error {
+func (this *RelayAcceptor) Start() error {
 	if this.listener == nil {
 		return errors.New("no listener")
 	}
@@ -187,11 +187,11 @@ func(this *RelayAcceptor) Start() error {
 		for {
 			conn, err := this.listener.Accept()
 			if err != nil {
-				this.connectionList <- &connrecv{ nil, err }
+				this.connectionList <- &connrecv{nil, err}
 			}
 			go func() {
 				if this.mixFunc != nil {
-					tconn, err  := this.mixFunc(conn)
+					tconn, err := this.mixFunc(conn)
 					if err != nil {
 						this.connectionList <- &connrecv{nil, err}
 						conn.Close()
@@ -214,7 +214,7 @@ func(this *RelayAcceptor) Start() error {
 	return nil
 }
 
-func(this *RelayAcceptor) Accept() (*RelayConn, error) {
+func (this *RelayAcceptor) Accept() (*RelayConn, error) {
 	if this.listener == nil {
 		return nil, errors.New("no listener")
 	}

@@ -1,30 +1,29 @@
 package wcf
 
 import (
-	log "github.com/sirupsen/logrus"
-	"net"
-	"wcf/relay"
-	"sync"
-	"context"
-	"sync/atomic"
 	"check"
-	"proxy"
-	"net_utils"
-	"lb"
-	"time"
-	"proxy_delegate"
-	"mix_delegate"
-	"transport_delegate"
+	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"lb"
+	"mix_delegate"
+	"net"
+	"net_utils"
+	"proxy"
+	"proxy_delegate"
+	"sync"
+	"sync/atomic"
+	"time"
+	"transport_delegate"
+	"wcf/relay"
 )
 
 type LocalClient struct {
-	config *LocalConfig
-	rule *check.Rule
-	lb *lb.LoadBalance
+	config    *LocalConfig
+	rule      *check.Rule
+	lb        *lb.LoadBalance
 	smartRule *check.SmartRule
 }
-
 
 func NewClient(config *LocalConfig) *LocalClient {
 	cli := &LocalClient{}
@@ -52,15 +51,15 @@ func NewClient(config *LocalConfig) *LocalClient {
 
 type RemoteDialFunc func(protocol string, addr string, timeout time.Duration) (net.Conn, error)
 
-func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, network string) {
+func (this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, network string) {
 	defer func() {
 		conn.Close()
 	}()
 	logger := log.WithFields(log.Fields{
-		"local": conn.RemoteAddr(),
+		"local":  conn.RemoteAddr(),
 		"remote": conn.GetTargetAddress(),
-		"id": sessionid,
-		"net": network,
+		"id":     sessionid,
+		"net":    network,
 	})
 	logger.Infof("Recv new connection from browser")
 	cfg := &relay.RelayConfig{}
@@ -120,7 +119,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		remote.Close()
 	}()
 	var token uint32 = 0
-	if rule == check.RULE_PROXY {  //only proxy mode should wrap this layer
+	if rule == check.RULE_PROXY { //only proxy mode should wrap this layer
 		newConn, err := mix_delegate.Wrap(this.config.Encrypt, this.config.Key, remote)
 		if err != nil {
 			logger.Errorf("Wrap connection with mix method:%s fail, err:%v, conn:%s", this.config.Encrypt, err, remote.RemoteAddr())
@@ -145,7 +144,7 @@ func(this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, netw
 		sr, sw, dr, dw, sre, swe, dre, dwe)
 }
 
-func(this *LocalClient) Start() error {
+func (this *LocalClient) Start() error {
 	var wg sync.WaitGroup
 	wg.Add(len(this.config.Localaddr))
 	var sessionid uint32 = 0
@@ -188,4 +187,3 @@ func(this *LocalClient) Start() error {
 	wg.Wait()
 	return nil
 }
-

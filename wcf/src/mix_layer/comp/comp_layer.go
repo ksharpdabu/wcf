@@ -1,8 +1,8 @@
 package comp
 
 import (
-	"net"
 	"compress/gzip"
+	"net"
 )
 
 func init() {
@@ -16,15 +16,15 @@ func init() {
 type Comp struct {
 	net.Conn
 	key string
-	r *gzip.Reader
-	w *gzip.Writer
+	r   *gzip.Reader
+	w   *gzip.Writer
 }
 
-func(this *Comp) SetKey(key string) {
+func (this *Comp) SetKey(key string) {
 	this.key = key
 }
 
-func(this *Comp) Read(b []byte) (int, error) {
+func (this *Comp) Read(b []byte) (int, error) {
 	if this.r == nil {
 		r, err := gzip.NewReader(this.Conn)
 		if err != nil {
@@ -35,7 +35,7 @@ func(this *Comp) Read(b []byte) (int, error) {
 	return this.r.Read(b)
 }
 
-func(this *Comp) Write(b []byte) (n int, err error) {
+func (this *Comp) Write(b []byte) (n int, err error) {
 	cnt, err := this.w.Write(b)
 	if err != nil {
 		return cnt, err
@@ -50,5 +50,5 @@ func Wrap(key string, conn net.Conn) (*Comp, error) {
 	//	return nil, errors.New(fmt.Sprintf("create gz reader fail, err:%v", err))
 	//}
 	writer := gzip.NewWriter(conn)
-	return &Comp{Conn:conn, key:key, r:nil, w:writer}, nil
+	return &Comp{Conn: conn, key: key, r: nil, w: writer}, nil
 }

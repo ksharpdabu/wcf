@@ -1,13 +1,13 @@
 package proxy_delegate
 
 import (
-	_ "proxy"
-	_ "proxy/socks"
-	_ "proxy/forward"
-	_ "proxy/http"
-	"time"
 	"net"
 	"proxy"
+	_ "proxy"
+	_ "proxy/forward"
+	_ "proxy/http"
+	_ "proxy/socks"
+	"time"
 )
 
 func DialTimeout(network string, addr string, px string, timeout time.Duration) (net.Conn, error) {

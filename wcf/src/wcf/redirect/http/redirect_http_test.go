@@ -1,8 +1,8 @@
 package http
 
 import (
-	"testing"
 	"net"
+	"testing"
 	"time"
 )
 
@@ -22,4 +22,3 @@ func TestSendHttpReq(t *testing.T) {
 		t.Logf("data:%s", string(buf[:cnt]))
 	}
 }
-

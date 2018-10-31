@@ -1,24 +1,24 @@
 package check
 
 import (
-	"os"
-	log "github.com/sirupsen/logrus"
 	"bufio"
-	"io"
-	"sync"
-	"net"
-	"reload"
-	"strings"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
+	"io"
+	"net"
 	"net_utils"
+	"os"
+	"reload"
 	"sort"
+	"strings"
+	"sync"
 )
 
 const (
-	RULE_BLOCK = 0
+	RULE_BLOCK  = 0
 	RULE_DIRECT = 1
-	RULE_PROXY = 2
+	RULE_PROXY  = 2
 )
 
 func HostRule2String(rule HostRule) string {
@@ -39,7 +39,7 @@ var defaultInfo = RULE_PROXY
 
 type CIDRRange struct {
 	Start uint32
-	End uint32
+	End   uint32
 	CIDRs []string
 }
 
@@ -59,11 +59,11 @@ func (s RouteList) Less(i, j int) bool {
 }
 
 type Rule struct {
-	file string
-	domain map[string]HostRule
-	cidr map[*net.IPNet]HostRule
+	file    string
+	domain  map[string]HostRule
+	cidr    map[*net.IPNet]HostRule
 	routeV4 map[int]RouteList
-	mu sync.RWMutex
+	mu      sync.RWMutex
 }
 
 func sortAndMerge(lst RouteList) RouteList {
@@ -74,7 +74,7 @@ func sortAndMerge(lst RouteList) RouteList {
 	var tmp RouteList
 	tmp = append(tmp, lst[0])
 	for i := 1; i < len(lst); i++ {
-		back := tmp[len(tmp) - 1]
+		back := tmp[len(tmp)-1]
 		if lst[i].Start <= back.End {
 			if lst[i].End > back.End {
 				back.End = lst[i].End
@@ -87,11 +87,11 @@ func sortAndMerge(lst RouteList) RouteList {
 	return tmp
 }
 
-func(this *Rule) onCheck(addr string, v interface{}) (bool, interface{}) {
+func (this *Rule) onCheck(addr string, v interface{}) (bool, interface{}) {
 	return reload.DefaultFileCheckModFunc(addr, v)
 }
 
-func(this *Rule) onLoad(addr string) (interface{}, error) {
+func (this *Rule) onLoad(addr string) (interface{}, error) {
 	file, err := os.Open(addr)
 	if err != nil {
 		log.Errorf("Open file:%s fail, err:%v", addr, err)
@@ -142,7 +142,7 @@ func(this *Rule) onLoad(addr string) (interface{}, error) {
 				log.Errorf("Parse cidr fail, err:%v, addr:%s, line:%s", err, addr, line)
 				continue
 			}
-			if ip.To4() == nil {  //v6
+			if ip.To4() == nil { //v6
 				cidr[cidritem] = rt
 			} else { //v4
 				st, ed := net_utils.ResolveIPRange(addr)
@@ -158,7 +158,7 @@ func(this *Rule) onLoad(addr string) (interface{}, error) {
 	return tmp, nil
 }
 
-func(this *Rule) onLoadSucc(addr string, result interface{}, err error) {
+func (this *Rule) onLoadSucc(addr string, result interface{}, err error) {
 	if err == nil {
 		this.mu.Lock()
 		defer this.mu.Unlock()
@@ -173,7 +173,7 @@ func(this *Rule) onLoadSucc(addr string, result interface{}, err error) {
 }
 
 func NewRule(file string) (*Rule, error) {
-	r := &Rule{file:file, domain:make(map[string]HostRule), cidr:make(map[*net.IPNet]HostRule)}
+	r := &Rule{file: file, domain: make(map[string]HostRule), cidr: make(map[*net.IPNet]HostRule)}
 	if len(file) == 0 {
 		return r, nil
 	}
@@ -196,22 +196,22 @@ func NewRule(file string) (*Rule, error) {
 	return r, nil
 }
 
-func(this *Rule) GetHostRuleOptional(addr string, safe bool) (HostRule) {
+func (this *Rule) GetHostRuleOptional(addr string, safe bool) HostRule {
 	v, _ := this.CheckAndGetRuleOptional(addr, safe)
 	return v
 }
 
-func(this *Rule) GetHostRule(addr string) (HostRule) {
+func (this *Rule) GetHostRule(addr string) HostRule {
 	return this.GetHostRuleOptional(addr, true)
 }
 
 func checkIPInRangeList(ip uint32, lst RouteList) bool {
 	var (
 		start = 0
-		end = len(lst) - 1
-		mid = 0
+		end   = len(lst) - 1
+		mid   = 0
 	)
-	for ; start <= end; {
+	for start <= end {
 		mid = (start + end) / 2
 		if lst[mid].Start <= ip && ip <= lst[mid].End {
 			return true
@@ -225,10 +225,10 @@ func checkIPInRangeList(ip uint32, lst RouteList) bool {
 	return false
 }
 
-func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (HostRule, bool) {
+func (this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (HostRule, bool) {
 	addr = strings.Trim(addr, "\r\n\t ")
 	if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") {
-		addr = addr[1:len(addr) - 1]
+		addr = addr[1 : len(addr)-1]
 	}
 	this.mu.RLock()
 	defer this.mu.RUnlock()
@@ -244,9 +244,9 @@ func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (HostRule, bool
 				if index < 0 {
 					break
 				}
-				tmpaddr = tmpaddr[index + 1:]
+				tmpaddr = tmpaddr[index+1:]
 			}
-			if safe {  //正常来说, 客户端做这个检查毫无意义, 除了拖慢速度, 所以弄成可选的。
+			if safe { //正常来说, 客户端做这个检查毫无意义, 除了拖慢速度, 所以弄成可选的。
 				newip, err := net.ResolveIPAddr("ip", addr)
 				if err != nil {
 					log.Errorf("Resolve ip addr err, domain addr:%s, err:%v", addr, err)
@@ -260,15 +260,15 @@ func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (HostRule, bool
 		if v, ok := this.domain[addr]; ok {
 			return v, true
 		}
-		if v4 := ip.To4(); v4 != nil {  //v4
+		if v4 := ip.To4(); v4 != nil { //v4
 			for op, lst := range this.routeV4 {
 				if checkIPInRangeList(net_utils.InetAtoNBytes(v4), lst) {
 					return HostRule(op), true
 				}
 			}
-		} else {  //v6
+		} else { //v6
 			for k, v := range this.cidr {
-				if k.Contains(ip){
+				if k.Contains(ip) {
 					return v, true
 				}
 			}
@@ -278,6 +278,6 @@ func(this *Rule) CheckAndGetRuleOptional(addr string, safe bool) (HostRule, bool
 	return HostRule(defaultInfo), false
 }
 
-func(this *Rule) CheckAndGetRule(addr string) (HostRule, bool) {
+func (this *Rule) CheckAndGetRule(addr string) (HostRule, bool) {
 	return this.CheckAndGetRuleOptional(addr, true)
 }

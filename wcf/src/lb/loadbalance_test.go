@@ -6,7 +6,7 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	lb := New(3, 30 * time.Second)
+	lb := New(3, 30*time.Second)
 	lb.Add("127.0.0.1", 10, nil)
 	lb.Add("127.0.0.2", 50, nil)
 	lb.Add("127.0.0.3", 30, nil)
@@ -24,7 +24,7 @@ func TestLoad(t *testing.T) {
 			time.Sleep(1 * time.Second)
 			continue
 		}
-		t.Logf("addr:%s, err:%v, curr:%d, base:%d, lastfail:%v, markfail:%t, maxerr:%d", addr, err, lb.mp[addr].Current, lb.mp[addr].Base, lb.mp[addr].LastFail,lb.mp[addr].MarkFail, lb.mp[addr].Errtime)
+		t.Logf("addr:%s, err:%v, curr:%d, base:%d, lastfail:%v, markfail:%t, maxerr:%d", addr, err, lb.mp[addr].Current, lb.mp[addr].Base, lb.mp[addr].LastFail, lb.mp[addr].MarkFail, lb.mp[addr].Errtime)
 		cnt[addr]++
 		if now.Add(30 * time.Second).Before(time.Now()) {
 			lb.Update(addr, true)
@@ -33,7 +33,6 @@ func TestLoad(t *testing.T) {
 		}
 	}
 	for k, v := range cnt {
-		t.Logf("addr:%d, cnt:%d, per:%f, info:%+v", k, v, float64(v) / float64(total), lb.mp[k])
+		t.Logf("addr:%d, cnt:%d, per:%f, info:%+v", k, v, float64(v)/float64(total), lb.mp[k])
 	}
 }
-

@@ -1,12 +1,12 @@
 package socks
 
 import (
-	"testing"
 	"github.com/sirupsen/logrus"
 	"net"
-	"sync"
 	"net_utils"
 	"proxy"
+	"sync"
+	"testing"
 )
 
 func handleProxy(conn proxy.ProxyConn) {
@@ -17,7 +17,7 @@ func handleProxy(conn proxy.ProxyConn) {
 	if err != nil {
 		logrus.Printf("Dial to remote fail, addr:%s, err:%s, client:%s", conn.GetTargetAddress(), err, conn.RemoteAddr())
 		conn.Close()
-		return ;
+		return
 	}
 	logrus.Printf("Dial to remote:%s succ, client:%s", conn.GetTargetAddress(), conn.RemoteAddr())
 	go func() {
@@ -55,4 +55,3 @@ func TestAccept(t *testing.T) {
 		go handleProxy(client)
 	}
 }
-

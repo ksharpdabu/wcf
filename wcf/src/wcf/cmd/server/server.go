@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	_ "net/http/pprof"
-	log "github.com/sirupsen/logrus"
-	"wcf"
 	"transport_delegate"
+	"wcf"
 	"wcf/redirect_delegate"
 )
 

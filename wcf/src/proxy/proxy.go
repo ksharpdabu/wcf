@@ -1,27 +1,27 @@
 package proxy
 
 import (
-	"net"
 	"errors"
 	"fmt"
+	"net"
 	"time"
 )
 
 const (
-	OP_TYPE_PROXY = 0          //proxy request
-	OP_TYPE_FORWARD = 1        //forward request
+	OP_TYPE_PROXY   = 0 //proxy request
+	OP_TYPE_FORWARD = 1 //forward request
 )
 
 const (
 	ADDR_TYPE_DETERMING = 0
-	ADDR_TYPE_IPV4 = 1
-	ADDR_TYPE_IPV6 = 4
-	ADDR_TYPE_DOMAIN = 3
+	ADDR_TYPE_IPV4      = 1
+	ADDR_TYPE_IPV6      = 4
+	ADDR_TYPE_DOMAIN    = 3
 )
 
 type ConnRecv struct {
 	Conn ProxyConn
-	Err error
+	Err  error
 }
 
 //

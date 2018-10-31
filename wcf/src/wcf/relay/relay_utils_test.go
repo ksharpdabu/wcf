@@ -1,12 +1,12 @@
 package relay
 
 import (
-	"testing"
-	"encoding/hex"
 	"bytes"
-	"net"
-	"time"
+	"encoding/hex"
 	"fmt"
+	"net"
+	"testing"
+	"time"
 )
 
 func TestBuildAndParse(t *testing.T) {
@@ -26,23 +26,23 @@ type TestConn struct {
 	rbuf bytes.Buffer
 }
 
-func(this *TestConn) Read(b []byte) (int, error) {
+func (this *TestConn) Read(b []byte) (int, error) {
 	cnt := copy(b, this.rbuf.Bytes())
 	this.rbuf.Next(cnt)
 	return cnt, nil
 }
 
-func(this *TestConn) Write(b []byte) (int, error) {
+func (this *TestConn) Write(b []byte) (int, error) {
 	this.rbuf.Write(b)
 	return len(b), nil
 }
 
-func(this *TestConn) Close() error { return nil }
-func(this *TestConn) LocalAddr() net.Addr { return nil }
-func(this *TestConn) RemoteAddr() net.Addr { return nil }
-func(this *TestConn) SetDeadline(t time.Time) error { return nil }
-func(this *TestConn) SetReadDeadline(t time.Time) error { return nil }
-func(this *TestConn) SetWriteDeadline(t time.Time) error { return nil }
+func (this *TestConn) Close() error                       { return nil }
+func (this *TestConn) LocalAddr() net.Addr                { return nil }
+func (this *TestConn) RemoteAddr() net.Addr               { return nil }
+func (this *TestConn) SetDeadline(t time.Time) error      { return nil }
+func (this *TestConn) SetReadDeadline(t time.Time) error  { return nil }
+func (this *TestConn) SetWriteDeadline(t time.Time) error { return nil }
 
 func TestSendRcv(t *testing.T) {
 	tconn := &TestConn{}
@@ -60,6 +60,6 @@ func TestSendRcv(t *testing.T) {
 		}
 		t.Logf("i:%d read:%d, data:%s, conn r:%s, w:%s, rd:%s, rtmp:%s", i, cnt, string(raw),
 			hex.EncodeToString(conn.rbuf.Bytes()), hex.EncodeToString(conn.wbuf.Bytes()),
-				hex.EncodeToString(conn.rdbuf.Bytes()), "")
+			hex.EncodeToString(conn.rdbuf.Bytes()), "")
 	}
 }

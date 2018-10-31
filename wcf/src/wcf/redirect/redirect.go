@@ -1,11 +1,11 @@
 package redirect
 
 import (
-	"net"
-	"github.com/pkg/errors"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"encoding/json"
+	"net"
 )
 
 type ProcessFunc func(net.Conn, interface{}) (int64, int64, error)
