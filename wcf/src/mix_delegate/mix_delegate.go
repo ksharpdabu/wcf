@@ -2,8 +2,8 @@ package mix_delegate
 
 import (
 	"mix_layer"
-	_ "mix_layer/xor"
 	_ "mix_layer/comp"
+	_ "mix_layer/xor"
 	"net"
 )
 

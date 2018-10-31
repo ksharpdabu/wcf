@@ -1,13 +1,13 @@
 package relay
 
 import (
-	"time"
-	"net"
-	"wcf/relay/msg"
-	"github.com/golang/protobuf/proto"
-	"net_utils"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"net"
+	"net_utils"
+	"time"
+	"wcf/relay/msg"
 )
 
 type RelayClientConn struct {
@@ -15,28 +15,27 @@ type RelayClientConn struct {
 	token uint32
 }
 
-func(this *RelayClientConn) GetToken() uint32 {
+func (this *RelayClientConn) GetToken() uint32 {
 	return this.token
 }
 
 type RelayAddress struct {
-	Addr string
+	Addr     string
 	AddrType int32
-	Name string
-	Port uint16
+	Name     string
+	Port     uint16
 }
 
 type RelayConfig struct {
-	User string
-	Pwd string
-	Address RelayAddress
-	RelayType int32   //refer consts.go OP_TYPE_xxx
+	User      string
+	Pwd       string
+	Address   RelayAddress
+	RelayType int32 //refer consts.go OP_TYPE_xxx
 }
 
 func Dial(addr string, config *RelayConfig) (*RelayClientConn, error) {
-	return DialWithTimeout(addr, time.Hour, config)  //应该差不多效果了吧, 一个钟都连不上, 那只能玩个蛋蛋了。。
+	return DialWithTimeout(addr, time.Hour, config) //应该差不多效果了吧, 一个钟都连不上, 那只能玩个蛋蛋了。。
 }
-
 
 func doAuth(conn net.Conn, config *RelayConfig) (net.Conn, error, uint32) {
 	data := BuildDataPacket(BuildAuthReqMsg(config))
@@ -49,7 +48,7 @@ func doAuth(conn net.Conn, config *RelayConfig) (net.Conn, error, uint32) {
 	total := len(buf)
 	var ckResult int
 	var ckErr error
-	for ; index < total; {
+	for index < total {
 		cnt, err := conn.Read(buf[index:])
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("recv auth rsp data from proxy fail, err:%v, conn:%s", err, conn.RemoteAddr())), 0
@@ -92,7 +91,7 @@ func WrapConnection(conn net.Conn, config *RelayConfig) (*RelayClientConn, error
 		return nil, err
 	}
 
-	return &RelayClientConn{Conn:newConn, token:token}, nil
+	return &RelayClientConn{Conn: newConn, token: token}, nil
 }
 
 func DialWithTimeout(addr string, sec time.Duration, config *RelayConfig) (*RelayClientConn, error) {

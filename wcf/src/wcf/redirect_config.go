@@ -1,22 +1,22 @@
 package wcf
 
 import (
-	"time"
-	"io/ioutil"
 	"encoding/json"
+	"io/ioutil"
+	"time"
 )
 
 type RedirectConfig struct {
-	Localaddr string `json:"localaddr"`
-	Proxyaddr string `json:"proxyaddr"`
-	Timeout time.Duration `json:"timeout"`
+	Localaddr string        `json:"localaddr"`
+	Proxyaddr string        `json:"proxyaddr"`
+	Timeout   time.Duration `json:"timeout"`
 }
 
 func NewRedirectConfig() *RedirectConfig {
 	return &RedirectConfig{}
 }
 
-func(this *RedirectConfig) Parse(file string) error {
+func (this *RedirectConfig) Parse(file string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err

@@ -1,9 +1,9 @@
 package relay
 
 import (
-	"net"
-	"github.com/pkg/errors"
+	"errors"
 	"fmt"
+	"net"
 )
 
 type ExtraConn struct {
@@ -11,7 +11,7 @@ type ExtraConn struct {
 	rbuf []byte
 }
 
-func(this *ExtraConn) Read(b []byte) (int, error) {
+func (this *ExtraConn) Read(b []byte) (int, error) {
 	if len(this.rbuf) != 0 {
 		cnt := copy(b, this.rbuf)
 		if cnt == len(this.rbuf) {
@@ -24,7 +24,7 @@ func(this *ExtraConn) Read(b []byte) (int, error) {
 	return this.Conn.Read(b)
 }
 
-func(this *ExtraConn) Close() error {
+func (this *ExtraConn) Close() error {
 	if len(this.rbuf) != 0 {
 		return errors.New(fmt.Sprintf("data not empty, r:%d", len(this.rbuf)))
 	}

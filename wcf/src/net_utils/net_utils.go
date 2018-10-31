@@ -1,14 +1,14 @@
 package net_utils
 
 import (
-	"net"
 	"context"
-	"time"
-	"sync"
 	"io"
-	"strings"
+	"net"
 	"regexp"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
 	//log "github.com/sirupsen/logrus"
 	"errors"
 	"fmt"
@@ -59,8 +59,8 @@ func IsDone(ctx context.Context) bool {
 //src read, src write, dst read, dst write, src read err, src write err, dst read err, dst write err
 func Pipe(src net.Conn, dst net.Conn,
 	srcReadBuffer []byte, dstReadBuffer []byte,
-		ctx context.Context, cancel context.CancelFunc,
-			timeout time.Duration) (uint64, uint64, uint64, uint64, error, error, error, error) {
+	ctx context.Context, cancel context.CancelFunc,
+	timeout time.Duration) (uint64, uint64, uint64, uint64, error, error, error, error) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	//src read, src write, dst read, dst write
@@ -71,7 +71,7 @@ func Pipe(src net.Conn, dst net.Conn,
 		defer func() {
 			cancel()
 			wg.Done()
-		} ()
+		}()
 		for {
 			src.SetReadDeadline(time.Now().Add(timeout))
 			srcRead, dstWrite, srcReadErr, dstWriteErr := DataCopy(src, dst, srcReadBuffer)
@@ -143,7 +143,7 @@ func DataCopy(src net.Conn, dst net.Conn, buffer []byte) (int, int, error, error
 	data := buffer[:cnt]
 	total := len(data)
 	index := 0
-	for ; index < total; {
+	for index < total {
 		wcnt, werr := dst.Write(data[index:])
 		if werr != nil {
 			return cnt, wcnt, nil, werr
@@ -173,7 +173,7 @@ func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
 		data := buf[0:cnt]
 		writeIndex := 0
 		writeTotal := len(data)
-		for ; writeIndex < writeTotal; {
+		for writeIndex < writeTotal {
 			wcur, werr := dst.Write(data[writeIndex:])
 			if werr != nil {
 				return readCnt, writeCnt, rerr, werr
@@ -213,10 +213,10 @@ func ResolveRealAddr(addr string) string {
 	return name
 }
 
-func SendSpecLen(conn net.Conn, buf[]byte) error {
+func SendSpecLen(conn net.Conn, buf []byte) error {
 	total := len(buf)
 	index := 0
-	for ; index < total; {
+	for index < total {
 		cur, err := conn.Write(buf[index:])
 		//log.Printf("Send:%v, client:%s", buf[index:index+cur], conn.RemoteAddr())
 		if err != nil {

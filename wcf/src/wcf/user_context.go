@@ -1,16 +1,16 @@
 package wcf
 
 import (
-	"sync"
 	"limiter"
+	"sync"
 )
 
 type UserContext struct {
-    Limit limiter.Limiter
-	Info *UserInfo
+	Limit limiter.Limiter
+	Info  *UserInfo
 }
 
-var allctx = make(map[string]* UserContext)
+var allctx = make(map[string]*UserContext)
 var mu sync.Mutex
 
 func GetOrCreateContext(info *UserInfo) *UserContext {

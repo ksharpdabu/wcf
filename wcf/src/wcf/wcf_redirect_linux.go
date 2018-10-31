@@ -1,18 +1,18 @@
 package wcf
 
 import (
-	"net"
+	"context"
 	log "github.com/sirupsen/logrus"
-	"unsafe"
-	"syscall"
+	"net"
+	"net_utils"
 	"os"
 	"proxy/socks"
-	"net_utils"
-	"context"
+	"syscall"
+	"unsafe"
 )
 
 type RedirectServer struct {
-	config *RedirectConfig
+	config      *RedirectConfig
 	tcplistener *net.TCPListener
 }
 
@@ -96,7 +96,7 @@ func GetOriginalDST(conn *net.TCPConn) (*net.TCPAddr, error) {
 	}, nil
 }
 
-func(this *RedirectServer) handleProxy(conn net.Conn, sessionid uint32) {
+func (this *RedirectServer) handleProxy(conn net.Conn, sessionid uint32) {
 	original, err := GetOriginalDST(conn.(*net.TCPConn))
 	if err != nil {
 		log.Errorf("Get connection original dst fail, err:%v, conn:%s", err, conn.RemoteAddr())
@@ -115,14 +115,14 @@ func(this *RedirectServer) handleProxy(conn net.Conn, sessionid uint32) {
 		conn.Close()
 		remote.Close()
 	}()
-	sbuf := make([]byte, 64 * 1024)
-	dbuf := make([]byte, 64 * 1024)
+	sbuf := make([]byte, 64*1024)
+	dbuf := make([]byte, 64*1024)
 	ctx, cancel := context.WithCancel(context.Background())
 	br, bw, pr, pw, bre, bwe, pre, pwe := net_utils.Pipe(conn, remote, sbuf, dbuf, ctx, cancel, this.config.Timeout)
 	log.Infof("Transfer data finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%v, bwe:%v, pre:%v, pwe:%v, session:%d, local:%s, remote:%s", br, bw, pr, pw, bre, bwe, pre, pwe, sessionid, conn.RemoteAddr(), remote.RemoteAddr())
 }
 
-func(this *RedirectServer) Start() error {
+func (this *RedirectServer) Start() error {
 	listener, err := net.Listen("tcp", this.config.Localaddr)
 	if err != nil {
 		log.Errorf("Redirect svr bind addr:%s fail:err:%v", this.config.Localaddr, err)

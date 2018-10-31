@@ -2,17 +2,17 @@ package http
 
 import (
 	"bufio"
+	"encoding/json"
+	"fmt"
+	"io"
+	"math/rand"
 	"net"
 	"net/http"
-	"math/rand"
-	"io"
-	"encoding/json"
 	"wcf/redirect"
-	"fmt"
 	//"github.com/sirupsen/logrus"
 	"bytes"
-	"net_utils"
 	"errors"
+	"net_utils"
 )
 
 func init() {
@@ -20,7 +20,7 @@ func init() {
 }
 
 type HTTPParam struct {
-	RedirectHost   []string `json:"redirect"`
+	RedirectHost []string `json:"redirect"`
 }
 
 func ParseHTTPArgs(data []byte) (interface{}, error) {
@@ -41,7 +41,7 @@ func buildHTTPRespHeader(code int, headers http.Header) []byte {
 		}
 		buffer.WriteString(fmt.Sprintf("%s: %s\r\n", k, v[0]))
 	}
-	buffer.WriteString("\r\n");
+	buffer.WriteString("\r\n")
 	return buffer.Bytes()
 }
 
@@ -53,14 +53,12 @@ func ProcessHTTP(conn net.Conn, extra interface{}) (int64, int64, error) {
 	if err != nil {
 		return 0, 0, errors.New(fmt.Sprintf("parse request fail, err:%v", err))
 	}
-	uri := param.RedirectHost[rand.Int() % len(param.RedirectHost)] + "/" + req.RequestURI
-	newReq, err := http.NewRequest(req.Method, uri, req.Body);
+	uri := param.RedirectHost[rand.Int()%len(param.RedirectHost)] + "/" + req.RequestURI
+	newReq, err := http.NewRequest(req.Method, uri, req.Body)
 	if err != nil {
 		return 0, 0, errors.New(fmt.Sprintf("create new request fail, err:%v, url:%s", err, uri))
 	}
-	client := &http.Client{
-
-	}
+	client := &http.Client{}
 	rsp, err := client.Do(newReq)
 	if err != nil {
 		return 0, 0, errors.New(fmt.Sprintf("do request fail, err:%v, url:%s", err, uri))

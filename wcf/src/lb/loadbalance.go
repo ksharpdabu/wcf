@@ -1,32 +1,32 @@
 package lb
 
 import (
-	"time"
-	"sync"
-	"math/rand"
 	"errors"
+	"math/rand"
+	"sync"
+	"time"
 )
 
 //一个简易的负载均衡组件, 实现的比较挫, 考虑到每秒建立连接数的数量非常地低, 所以这个工具还是勉强能用的=.=
 //最小的权重值只能为1.。。
 type LoadItem struct {
-	Current int
-	Base int
+	Current  int
+	Base     int
 	MarkFail bool
-	Errtime int
+	Errtime  int
 	LastFail time.Time
-	Extra interface{}
+	Extra    interface{}
 }
 
 type LoadBalance struct {
-	mu sync.Mutex
-	mp map[string]*LoadItem
-	maxErr int
+	mu      sync.Mutex
+	mp      map[string]*LoadItem
+	maxErr  int
 	maxFail time.Duration
-	rnd *rand.Rand
+	rnd     *rand.Rand
 }
 
-func(this *LoadBalance) autoScan() {
+func (this *LoadBalance) autoScan() {
 	for {
 		this.mu.Lock()
 		for _, v := range this.mp {
@@ -35,7 +35,7 @@ func(this *LoadBalance) autoScan() {
 					v.MarkFail = false
 					v.LastFail = time.Time{}
 					v.Errtime = 0
-					v.Current = v.Base / 2 + 1
+					v.Current = v.Base/2 + 1
 				}
 			}
 		}
@@ -46,13 +46,13 @@ func(this *LoadBalance) autoScan() {
 }
 
 func New(maxErrTime int, maxFailTime time.Duration) *LoadBalance {
-	l := &LoadBalance{mp:make(map[string]*LoadItem), maxErr:maxErrTime, maxFail:maxFailTime}
+	l := &LoadBalance{mp: make(map[string]*LoadItem), maxErr: maxErrTime, maxFail: maxFailTime}
 	l.rnd = rand.New(rand.NewSource(time.Now().Unix()))
 	go l.autoScan()
 	return l
 }
 
-func(this *LoadBalance) Add(addr string, weight int, extra interface{}) {
+func (this *LoadBalance) Add(addr string, weight int, extra interface{}) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	item := &LoadItem{}
@@ -68,7 +68,7 @@ func(this *LoadBalance) Add(addr string, weight int, extra interface{}) {
 	this.mp[addr] = item
 }
 
-func(this *LoadBalance) Get() (string, interface{}, error) {
+func (this *LoadBalance) Get() (string, interface{}, error) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	var total int = 0
@@ -88,7 +88,7 @@ func(this *LoadBalance) Get() (string, interface{}, error) {
 		}
 		rnd -= v.Current
 		if rnd <= 0 {
-			if v.Current > v.Base / 2 {
+			if v.Current > v.Base/2 {
 				v.Current--
 			}
 			if v.Current <= 0 {
@@ -100,7 +100,7 @@ func(this *LoadBalance) Get() (string, interface{}, error) {
 	panic("should not reach here..")
 }
 
-func(this *LoadBalance) Update(addr string, result bool) {
+func (this *LoadBalance) Update(addr string, result bool) {
 	this.mu.Lock()
 	defer this.mu.Unlock()
 	if v, ok := this.mp[addr]; ok {
@@ -108,10 +108,10 @@ func(this *LoadBalance) Update(addr string, result bool) {
 		if result {
 			if v.MarkFail {
 				v.MarkFail = false
-				v.Current += v.Base / 5 + 1
+				v.Current += v.Base/5 + 1
 			} else {
-				if v.Current <= v.Base / 2 {
-					v.Current += v.Base / 5 + 1
+				if v.Current <= v.Base/2 {
+					v.Current += v.Base/5 + 1
 				} else {
 					v.Current++
 				}
@@ -130,9 +130,9 @@ func(this *LoadBalance) Update(addr string, result bool) {
 			v.MarkFail = true
 			v.LastFail = time.Now()
 		}
-		v.Current = v.Current / 2 - v.Base / 10
+		v.Current = v.Current/2 - v.Base/10
 		if v.Current <= 0 {
-			v.Current = v.Base / 10 + 1
+			v.Current = v.Base/10 + 1
 		}
 		return
 	}

@@ -1,8 +1,8 @@
 package xor
 
 import (
-	"testing"
 	"encoding/hex"
+	"testing"
 )
 
 func TestXor_SetKey(t *testing.T) {
@@ -18,9 +18,9 @@ func TestXor_Compare(t *testing.T) {
 	tmp := "this is a test"
 	word := make([]byte, len(tmp))
 	copy(word, tmp)
-	xor.xor(word)
+	xor.xor(word, 0)
 	t.Log(string(word))
 	t.Log(hex.EncodeToString([]byte(word)))
-	xor.xor(word)
+	xor.xor(word, 0)
 	t.Log(string(word))
 }

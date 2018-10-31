@@ -3,13 +3,13 @@ package limiter
 import "sync"
 
 type Limiter struct {
-	cnt int
+	cnt  int
 	base int
 	lock sync.Mutex
 }
 
 //used, could acqure
-func(this *Limiter) TryAcqure() (int, bool) {
+func (this *Limiter) TryAcqure() (int, bool) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	if this.cnt > 0 {
@@ -19,7 +19,7 @@ func(this *Limiter) TryAcqure() (int, bool) {
 	return 0, false
 }
 
-func(this *Limiter) Release() int {
+func (this *Limiter) Release() int {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	if this.cnt < this.base {
@@ -28,15 +28,15 @@ func(this *Limiter) Release() int {
 	return this.cnt
 }
 
-func(this *Limiter) GetCur() int {
+func (this *Limiter) GetCur() int {
 	return this.cnt
 }
 
-func(this *Limiter) GetBase() int {
+func (this *Limiter) GetBase() int {
 	return this.base
 }
 
-func(this *Limiter) Reset(cur int, base int) {
+func (this *Limiter) Reset(cur int, base int) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.cnt = cur
@@ -44,5 +44,5 @@ func(this *Limiter) Reset(cur int, base int) {
 }
 
 func NewLimiter(cnt int) *Limiter {
-	return &Limiter{cnt:cnt, base:cnt}
+	return &Limiter{cnt: cnt, base: cnt}
 }

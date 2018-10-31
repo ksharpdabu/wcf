@@ -2,11 +2,11 @@ package relay
 
 import (
 	"encoding/binary"
-	"wcf/relay/msg"
-	"github.com/golang/protobuf/proto"
-	"hash/crc32"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"hash/crc32"
+	"wcf/relay/msg"
 )
 
 func CheckRelayPacketReadyWithLength(data []byte, maxBytes uint32) (int, error) {
@@ -23,8 +23,8 @@ func CheckRelayPacketReadyWithLength(data []byte, maxBytes uint32) (int, error) 
 	if len(data) < int(total) {
 		return 0, nil
 	}
-	if data[4] != 0x2 || data[total - 1] != 0x3 {
-		return -2, errors.New(fmt.Sprintf("packet delims err, start:%d, end:%d", int(data[4]), int(data[total - 1])))
+	if data[4] != 0x2 || data[total-1] != 0x3 {
+		return -2, errors.New(fmt.Sprintf("packet delims err, start:%d, end:%d", int(data[4]), int(data[total-1])))
 	}
 	return int(total), nil
 }
@@ -40,7 +40,7 @@ func GetPacketData(data []byte) ([]byte, error) {
 	if total <= 0 || err != nil {
 		return nil, errors.New(fmt.Sprintf("check buf fail, v:%d, err:%v", total, err))
 	}
-	buf := data[5:total - 1]
+	buf := data[5 : total-1]
 	pb := &msg.DataPacket{}
 	err = proto.Unmarshal(buf, pb)
 	if err != nil {
@@ -58,10 +58,10 @@ func BuildDataPacket(data []byte) []byte {
 	pb.Data = data
 	pb.Crc = proto.Uint32(crc32.Checksum(data, crc32.IEEETable))
 	raw, _ := proto.Marshal(&pb)
-	buffer := make([]byte, 4 + 1 + 1 + len(raw))
+	buffer := make([]byte, 4+1+1+len(raw))
 	binary.BigEndian.PutUint32(buffer, uint32(len(buffer)))
 	buffer[4] = 0x2
-	buffer[len(buffer) - 1] = 0x3
+	buffer[len(buffer)-1] = 0x3
 	copy(buffer[5:], raw)
 	return buffer
 }
@@ -71,9 +71,9 @@ func BuildAuthReqMsg(config *RelayConfig) []byte {
 	req.Pwd = proto.String(config.Pwd)
 	req.User = proto.String(config.User)
 	req.Address = &msg.RelayAddress{
-		AddressType:proto.Int32(config.Address.AddrType),
-		Name:proto.String(config.Address.Name),
-		Port:proto.Uint32(uint32(config.Address.Port)),
+		AddressType: proto.Int32(config.Address.AddrType),
+		Name:        proto.String(config.Address.Name),
+		Port:        proto.Uint32(uint32(config.Address.Port)),
 	}
 	req.OpType = proto.Int32(config.RelayType)
 

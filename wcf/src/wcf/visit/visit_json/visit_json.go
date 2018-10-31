@@ -1,11 +1,11 @@
 package visit_json
 
 import (
-	"wcf/visit"
-	"os"
-	"io/ioutil"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"wcf/visit"
 )
 
 func init() {
@@ -23,7 +23,7 @@ type JsonConfig struct {
 	StoreLocation string `json:"store"`
 }
 
-func(this *VisitJson) Init(file string) error {
+func (this *VisitJson) Init(file string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
@@ -38,14 +38,14 @@ func(this *VisitJson) Init(file string) error {
 	return nil
 }
 
-func(this *VisitJson) OnView(view *visit.VisitInfo) error {
+func (this *VisitJson) OnView(view *visit.VisitInfo) error {
 	line, err := json.Marshal(view)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(this.Ptr, "%s\n", string(line))
 	this.Cnt++
-	if this.Cnt % 5 == 0 {
+	if this.Cnt%5 == 0 {
 		this.Ptr.Sync()
 		this.Cnt = 0
 	}

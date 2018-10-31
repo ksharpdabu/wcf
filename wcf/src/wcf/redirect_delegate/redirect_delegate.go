@@ -2,10 +2,10 @@ package redirect_delegate
 
 import "wcf/redirect"
 import (
+	"net"
 	_ "wcf/redirect/http"
 	_ "wcf/redirect/raw"
 	_ "wcf/redirect/timeout"
-	"net"
 )
 
 func InitAll(file string) error {

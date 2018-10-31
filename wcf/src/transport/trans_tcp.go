@@ -12,5 +12,3 @@ func init() {
 		return net.DialTimeout("tcp", addr, timeout)
 	}, nil)
 }
-
-

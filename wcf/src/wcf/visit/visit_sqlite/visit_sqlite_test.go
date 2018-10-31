@@ -13,4 +13,3 @@ func TestFormat(t *testing.T) {
 func TestVisitSqlite_toDay(t *testing.T) {
 	t.Log(todayAfterNDay(1))
 }
-

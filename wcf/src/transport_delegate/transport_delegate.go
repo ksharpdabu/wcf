@@ -1,9 +1,9 @@
 package transport_delegate
 
 import (
-	"transport"
 	"net"
 	"time"
+	"transport"
 )
 
 func InitAllProtocol(file string) error {

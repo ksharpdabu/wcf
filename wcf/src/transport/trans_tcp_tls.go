@@ -1,10 +1,10 @@
 package transport
 
 import (
-	"net"
 	"crypto/tls"
-	"time"
 	"encoding/json"
+	"net"
+	"time"
 )
 
 type tlsBindCfg struct {

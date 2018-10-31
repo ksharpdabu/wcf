@@ -3,11 +3,11 @@ package visit_sqlite
 import (
 	"database/sql"
 	"encoding/json"
-	"io/ioutil"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
+	"io/ioutil"
 	"time"
 	"wcf/visit"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func init() {
@@ -56,10 +56,10 @@ func (this *VisitSqlite) Init(file string) error {
 	return nil
 }
 
-func(this *VisitSqlite) autoNewTable() {
+func (this *VisitSqlite) autoNewTable() {
 	for {
 		for i := 0; i < this.cfg.PreCreateDay; i++ {
-			_, err := this.db.Exec(fmt.Sprintf(this.cfg.InitSQL, todayAfterNDay(i + 1)))
+			_, err := this.db.Exec(fmt.Sprintf(this.cfg.InitSQL, todayAfterNDay(i+1)))
 			if err != nil {
 				//TO DO SOMETHING?
 			}

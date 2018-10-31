@@ -1,13 +1,13 @@
 package socks
 
 import (
-	"net"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"encoding/binary"
-	"proxy"
+	"net"
 	"net_utils"
-	"encoding/hex"
+	"proxy"
 	//log "github.com/sirupsen/logrus"
 )
 
@@ -18,22 +18,22 @@ func init() {
 }
 
 type SocksAcceptor struct {
-	listener net.Listener
+	listener       net.Listener
 	connectionList chan *proxy.ConnRecv
-	onHostCheck proxy.HostCheckFunc
+	onHostCheck    proxy.HostCheckFunc
 }
 
 func newAcceptorCtx() *SocksAcceptor {
 	sa := &SocksAcceptor{}
 	sa.connectionList = make(chan *proxy.ConnRecv, 5)
-	return sa;
+	return sa
 }
 
 type SocksAddress struct {
-	Address string
+	Address  string
 	AddrType int
-	Name string
-	Port uint16
+	Name     string
+	Port     uint16
 }
 
 type SocksConn struct {
@@ -42,7 +42,7 @@ type SocksConn struct {
 	rbuf []byte
 }
 
-func(this *SocksConn) Read(b []byte) (int, error) {
+func (this *SocksConn) Read(b []byte) (int, error) {
 	if len(this.rbuf) != 0 {
 		cnt := copy(b, this.rbuf)
 		if cnt == len(this.rbuf) {
@@ -55,23 +55,23 @@ func(this *SocksConn) Read(b []byte) (int, error) {
 	return this.Conn.Read(b)
 }
 
-func(this *SocksConn) GetTargetName() string {
+func (this *SocksConn) GetTargetName() string {
 	return this.address.Name
 }
 
-func(this *SocksConn) GetTargetPort() uint16 {
+func (this *SocksConn) GetTargetPort() uint16 {
 	return this.address.Port
 }
 
-func(this *SocksConn) GetTargetType() int {
+func (this *SocksConn) GetTargetType() int {
 	return this.address.AddrType
 }
 
-func(this *SocksConn) GetTargetOPType() int {
+func (this *SocksConn) GetTargetOPType() int {
 	return proxy.OP_TYPE_PROXY
 }
 
-func(this *SocksConn) GetTargetAddress() string {
+func (this *SocksConn) GetTargetAddress() string {
 	return this.address.Address
 }
 
@@ -89,11 +89,11 @@ func WrapListener(listener net.Listener) (*SocksAcceptor, error) {
 	return sa, nil
 }
 
-func(this *SocksAcceptor) AddHostHook(fun proxy.HostCheckFunc) {
+func (this *SocksAcceptor) AddHostHook(fun proxy.HostCheckFunc) {
 	this.onHostCheck = fun
 }
 
-func(this *SocksAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
+func (this *SocksAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 	buf := make([]byte, 512)
 	index := 0
 	hasSendHandshake := false
@@ -112,29 +112,29 @@ func(this *SocksAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 				continue
 			}
 			ms := int(buf[1])
-			if len(buf) < ms + 1 + 1 {
+			if len(buf) < ms+1+1 {
 				continue
 			}
 			if buf[0] != 0x5 {
-				conn.Write([]byte { 0x5, 0xFF })
+				conn.Write([]byte{0x5, 0xFF})
 				return nil, errors.New(fmt.Sprintf("invalid ver:%d from conn:%s", int(buf[0]), conn.RemoteAddr()))
 			}
 			found := false
-			for i := 0; i < ms; i ++ {
-				if buf[2 + i] == 0x0 {
+			for i := 0; i < ms; i++ {
+				if buf[2+i] == 0x0 {
 					found = true
 					break
 				}
 			}
 			if !found {
-				conn.Write([]byte { 0x5, 0xFF })
+				conn.Write([]byte{0x5, 0xFF})
 				return nil, errors.New(fmt.Sprintf("not found method:0x0 from conn:%s", conn.RemoteAddr()))
 			}
-			err := net_utils.SendSpecLen(conn, []byte{ 0x5, 0x0})
+			err := net_utils.SendSpecLen(conn, []byte{0x5, 0x0})
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("send socks hand shake fail, err:%v, conn:%s", err, conn.RemoteAddr()))
 			}
-			copy(buf, buf[ms + 1 + 1:])
+			copy(buf, buf[ms+1+1:])
 			index -= ms + 1 + 1
 			hasSendHandshake = true
 		}
@@ -160,8 +160,8 @@ func(this *SocksAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 			addr = net.IP(buf[4:8]).String()
 			port = binary.BigEndian.Uint16(buf[8:10])
 		} else if atyp == proxy.ADDR_TYPE_DOMAIN {
-			addr = string(buf[5:5 + int(buf[4])])
-			port = binary.BigEndian.Uint16(buf[5 + int(buf[4]):5 + int(buf[4]) + 2])
+			addr = string(buf[5 : 5+int(buf[4])])
+			port = binary.BigEndian.Uint16(buf[5+int(buf[4]) : 5+int(buf[4])+2])
 		} else if atyp == proxy.ADDR_TYPE_IPV6 {
 			addr = net.IP(buf[4:20]).String()
 			port = binary.BigEndian.Uint16(buf[20:22])
@@ -192,7 +192,7 @@ func(this *SocksAcceptor) Handshake(conn net.Conn) (proxy.ProxyConn, error) {
 	return &SocksConn{&SocksAddress{fmt.Sprintf("%s:%d", addr, port), atyp, addr, port}, conn, rb}, nil
 }
 
-func(this *SocksAcceptor) Start() error {
+func (this *SocksAcceptor) Start() error {
 	if this.listener == nil {
 		return errors.New("no listener")
 	}
@@ -200,7 +200,7 @@ func(this *SocksAcceptor) Start() error {
 		for {
 			conn, err := this.listener.Accept()
 			if err != nil {
-				this.connectionList <- &proxy.ConnRecv{ nil, err }
+				this.connectionList <- &proxy.ConnRecv{nil, err}
 				continue
 			}
 			go func() {
@@ -217,7 +217,7 @@ func(this *SocksAcceptor) Start() error {
 	return nil
 }
 
-func(this *SocksAcceptor) Accept() (proxy.ProxyConn, error) {
+func (this *SocksAcceptor) Accept() (proxy.ProxyConn, error) {
 	if this.listener == nil {
 		return nil, errors.New("no listener")
 	}

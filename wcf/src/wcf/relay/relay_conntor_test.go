@@ -1,9 +1,9 @@
 package relay
 
 import (
-	"testing"
-	"net"
 	log "github.com/sirupsen/logrus"
+	"net"
+	"testing"
 )
 
 func TestDoAuth(t *testing.T) {
@@ -20,4 +20,3 @@ func TestDoAuth(t *testing.T) {
 	cn, err, token := doAuth(conn, cfg)
 	log.Infof("err:%v, token:%d, cn:%v", err, token, cn)
 }
-

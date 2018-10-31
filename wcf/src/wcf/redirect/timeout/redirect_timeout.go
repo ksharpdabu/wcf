@@ -2,8 +2,8 @@ package timeout
 
 import (
 	"encoding/json"
-	"net"
 	"math/rand"
+	"net"
 	"time"
 	"wcf/redirect"
 )
@@ -41,7 +41,7 @@ func ProcessTimeout(conn net.Conn, extra interface{}) (int64, int64, error) {
 	if param.MaxDuration == param.MinDuration {
 		ts = param.MaxDuration
 	} else {
-		ts = param.MinDuration + rand.Int63n(param.MaxDuration - param.MinDuration)
+		ts = param.MinDuration + rand.Int63n(param.MaxDuration-param.MinDuration)
 	}
 	if ts != 0 {
 		dur := time.Duration(ts) * time.Second

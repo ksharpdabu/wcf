@@ -1,11 +1,11 @@
 package mix_layer
 
 import (
-	"net"
-	"sync"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
+	"sync"
 )
 
 type MixLayer struct {
@@ -41,7 +41,7 @@ type DefaultMixConn struct {
 	net.Conn
 }
 
-func(this *DefaultMixConn) SetKey(string) {
+func (this *DefaultMixConn) SetKey(string) {
 
 }
 
@@ -56,4 +56,3 @@ func Wrap(name string, key string, conn net.Conn) (MixConn, error) {
 	}
 	return nil, errors.New(fmt.Sprintf("mix name:%s not regist", name))
 }
-

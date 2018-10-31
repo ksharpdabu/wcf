@@ -1,16 +1,16 @@
 package http
 
 import (
-	"net"
-	"time"
-	"fmt"
-	"errors"
-	"net_utils"
-	"strings"
 	"bytes"
 	"encoding/hex"
-	"strconv"
+	"errors"
+	"fmt"
+	"net"
+	"net_utils"
 	"proxy"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func init() {
@@ -24,7 +24,7 @@ type HttpClient struct {
 	rbuf []byte
 }
 
-func(this *HttpClient) Read(b []byte) (int, error) {
+func (this *HttpClient) Read(b []byte) (int, error) {
 	if len(this.rbuf) != 0 {
 		cnt := copy(b, this.rbuf)
 		if cnt == len(this.rbuf) {
@@ -49,7 +49,7 @@ func handleShake(addr string, conn net.Conn) (*HttpClient, error) {
 	index := 0
 	total := len(buf)
 	var loc int = -1
-	for ; index < total; {
+	for index < total {
 		cnt, err := conn.Read(buf[index:])
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("recv connect rsp fail, err:%v", err))
@@ -75,15 +75,15 @@ func handleShake(addr string, conn net.Conn) (*HttpClient, error) {
 	if code != 200 {
 		return nil, errors.New(fmt.Sprintf("recv invalid rsp code:%d", code))
 	}
-	cli := &HttpClient{Conn:conn}
-	if loc + 4 < index {
-		cli.rbuf = buf[loc + 4:]
+	cli := &HttpClient{Conn: conn}
+	if loc+4 < index {
+		cli.rbuf = buf[loc+4:]
 	}
 	return cli, nil
 }
 
 func Dial(addr string, proxy string) (net.Conn, error) {
-	return DialWithTimeout(addr, proxy, 1 * time.Hour)
+	return DialWithTimeout(addr, proxy, 1*time.Hour)
 }
 
 func DialWithTimeout(addr string, proxy string, timeout time.Duration) (net.Conn, error) {

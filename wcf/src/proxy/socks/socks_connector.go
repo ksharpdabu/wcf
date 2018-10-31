@@ -1,15 +1,15 @@
 package socks
 
 import (
-	"net"
-	"time"
+	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"strconv"
-	"encoding/hex"
-	"proxy"
-	"encoding/binary"
+	"net"
 	"net_utils"
+	"proxy"
+	"strconv"
+	"time"
 )
 
 type SocksClient struct {
@@ -23,7 +23,7 @@ func init() {
 	})
 }
 
-func(this *SocksClient) Read(b []byte) (int, error) {
+func (this *SocksClient) Read(b []byte) (int, error) {
 	if len(this.rbuf) != 0 {
 		cnt := copy(b, this.rbuf)
 		if cnt == len(this.rbuf) {
@@ -37,7 +37,7 @@ func(this *SocksClient) Read(b []byte) (int, error) {
 }
 
 func BuildSocks5Handshake() []byte {
-	return []byte { 0x5, 0x1, 0x0 }
+	return []byte{0x5, 0x1, 0x0}
 }
 
 func CheckSocks5HandshakeResult(result []byte) (int, error) {
@@ -58,7 +58,7 @@ func BuildSocks5Req(host string, port uint16) ([]byte, error) {
 	var v net.IP
 	var addr []byte
 	if v = net.ParseIP(host); v == nil {
-		addr = make([]byte, 1 + len(host))
+		addr = make([]byte, 1+len(host))
 		addr[0] = byte(len(host))
 		copy(addr[1:], host)
 		addrType = proxy.ADDR_TYPE_DOMAIN
@@ -73,7 +73,7 @@ func BuildSocks5Req(host string, port uint16) ([]byte, error) {
 	} else {
 		return nil, errors.New(fmt.Sprintf("invalid host:%s", host))
 	}
-	req := []byte{ 0x5, 0x1, 0x0 }
+	req := []byte{0x5, 0x1, 0x0}
 	req = append(req, byte(addrType))
 	req = append(req, addr...)
 	pb := make([]byte, 2)
@@ -160,12 +160,12 @@ func handleShake(addr string, conn net.Conn) (*SocksClient, error) {
 		}
 		break
 	}
-	cli := &SocksClient{Conn:conn, rbuf:buffer}
+	cli := &SocksClient{Conn: conn, rbuf: buffer}
 	return cli, nil
 }
 
 func Dial(addr string, proxy string) (net.Conn, error) {
-	return DialWithTimeout(addr, proxy, 1 * time.Hour)
+	return DialWithTimeout(addr, proxy, 1*time.Hour)
 }
 
 func DialWithTimeout(addr string, proxy string, timeout time.Duration) (net.Conn, error) {

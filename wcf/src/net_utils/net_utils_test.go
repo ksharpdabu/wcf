@@ -9,4 +9,3 @@ func TestResolveRealAddr(t *testing.T) {
 	t.Logf(ResolveRealAddr("www.test.com"))
 	t.Logf(ResolveRealAddr("fe80::d9ee:b5b7:ac1e:a9ae"))
 }
-

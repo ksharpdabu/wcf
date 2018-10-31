@@ -1,15 +1,15 @@
 package transport
 
 import (
-	"net"
-	"github.com/xtaci/kcp-go"
-	"time"
 	"encoding/json"
+	"github.com/xtaci/kcp-go"
+	"net"
+	"time"
 )
 
 type kcpCfg struct {
-	DataShards int    `json:"data_shards"`
-	ParityShards int  `json:"parity_shards"`
+	DataShards   int `json:"data_shards"`
+	ParityShards int `json:"parity_shards"`
 }
 
 func initKcpConfig(bindData []byte, dialData []byte) (interface{}, interface{}, error) {
