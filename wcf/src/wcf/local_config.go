@@ -9,6 +9,7 @@ import (
 type AddrConfig struct {
 	Name    string `json:"name"`
 	Address string `json:"address"`
+	Extra   string `json:"extra"`
 }
 
 type LoadBalanceInfo struct {

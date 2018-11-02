@@ -35,6 +35,7 @@ function main() {
     dt=`date +%Y_%m_%d_%H_%M_%S`
     tarall wcf/src/wcf/cmd/local wcf_local_"$dt".tar.gz wcf_local_* ./releases/
     tarall wcf/src/wcf/cmd/server wcf_server_"$dt".tar.gz wcf_server_* ./releases/
+    tarall wcf/src/config wcf_config_"$dt".tar.gz \* ./releases/
 }
 
 main

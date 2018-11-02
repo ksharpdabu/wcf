@@ -12,11 +12,6 @@ import (
 	"sync"
 )
 
-type ForwardInfo struct {
-	EnableForward bool   `json:"enable"`
-	ForwardAddr   string `json:"address"`
-}
-
 type RWSPInfo struct {
 	Read  int64 `json:"read"`
 	Write int64 `json:"write"`
@@ -28,11 +23,11 @@ type SpeedInfo struct {
 }
 
 type UserInfo struct {
-	User          string      `json:"user"`
-	Pwd           string      `json:"pwd"`
-	Forward       ForwardInfo `json:"forward"`
-	MaxConnection int         `json:"max_conn"`
-	Speed         SpeedInfo   `json:"speed"`
+	User          string    `json:"user"`
+	Pwd           string    `json:"pwd"`
+	EnableForward bool      `json:"enable_forward"`
+	MaxConnection int       `json:"max_conn"`
+	Speed         SpeedInfo `json:"speed"`
 }
 
 type UserHolder struct {

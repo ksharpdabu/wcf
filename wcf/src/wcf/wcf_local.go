@@ -89,6 +89,11 @@ func (this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, net
 	} else {
 		logger.Infof("Host:%s hit config rule, rule:%s", conn.GetTargetName(), check.HostRule2String(rule))
 	}
+	if rule != check.RULE_PROXY && cfg.RelayType == proxy.OP_TYPE_FORWARD { //强行使用代理
+		logger.Infof("Forward connection rewrite old rule:%s to new rule:%s, forward connection:%s:%d, conn:%s",
+			check.HostRule2String(rule), check.HostRule2String(check.RULE_PROXY), conn.GetTargetName(), conn.GetTargetPort())
+		rule = check.RULE_PROXY
+	}
 	if rule == check.RULE_PROXY {
 		newConnAddr, extra, err := this.lb.Get()
 		protocol = extra.(string)
@@ -104,7 +109,6 @@ func (this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, net
 	var dur int64
 	remote, err, dur = transport_delegate.Dial(protocol, connAddr, this.config.Timeout)
 	if this.config.Lbinfo.Enable && rule == check.RULE_PROXY {
-		logger.Infof("Update addr:%s as t:%t", connAddr, err == nil)
 		this.lb.Update(connAddr, err == nil)
 	}
 
@@ -149,7 +153,7 @@ func (this *LocalClient) Start() error {
 	wg.Add(len(this.config.Localaddr))
 	var sessionid uint32 = 0
 	for _, config := range this.config.Localaddr {
-		acceptor, err := proxy_delegate.Bind(config.Name, config.Address)
+		acceptor, err := proxy_delegate.Bind(config.Name, config.Address, config.Extra)
 		if err != nil {
 			wg.Done()
 			log.Errorf("Bind addr:%s use protocol:%s fail, err:%v", config.Address, config.Name, err)

@@ -2,7 +2,7 @@
 	"localaddr": [
 		{"name":"socks", "address":"127.0.0.1:8010"},
 		{"name":"http", "address":"127.0.0.1:8011"},
-		{"name":"forward", "address":"127.0.0.1:8012"}
+		{"name":"forward", "address":"127.0.0.1:8012", "extra":"127.0.0.1:8000"}
 	],
 	"loadbalance":{
 		"enable":false,
@@ -12,12 +12,12 @@
 	"proxyaddr":[
 		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"}
 	],
-	"smart_proxy":true,
+	"smart_proxy":false,
 	"user":"test",
 	"pwd":"xxx",
 	"timeout":5,
-	"host":"D:/GoProj/wcf/wcf/src/config/local_host.rule",
+	"host":"./wcf/src/config/local_host.rule",
 	"encrypt":"none",
 	"key":"hellotest",
-	"transport":"D:/GoProj/wcf/wcf/src/config/transport.json"
+	"transport":"./wcf/src/config/transport.json"
 }
