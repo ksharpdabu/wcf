@@ -151,11 +151,13 @@ func (this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	var err error
 	var address string
 	if conn.GetTargetOPType() == proxy.OP_TYPE_FORWARD {
-		if !ui.Forward.EnableForward || len(ui.Forward.ForwardAddr) == 0 {
-			logger.Errorf("User no allaw use forward option or forward addr empty, skip, user:%s, addr:%s, conn:%s", ui.User, ui.Forward.ForwardAddr, conn.RemoteAddr())
+		if !ui.EnableForward {
+			logger.Errorf("User no allaw use forward option, skip, user:%s, addr:%s:%d, conn:%s",
+				ui.User, conn.GetTargetName(), conn.GetTargetPort(), conn.RemoteAddr())
 			return
 		}
-		address = ui.Forward.ForwardAddr
+		address = fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort())
+		logger.Infof("User:%s use forward option, target addr:%s", ui.User, address)
 
 	} else { //default proxy
 		address = fmt.Sprintf("%s:%d", net_utils.ResolveRealAddr(conn.GetTargetName()), conn.GetTargetPort())

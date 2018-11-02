@@ -5,19 +5,19 @@
 		{"address":"127.0.0.1:8022", "protocol":"tcp_tls"}
 	],
 	"timeout":2,
-	"userinfo":"D:/GoProj/wcf/wcf/src/config/userinfo.dat",
+	"userinfo":"./wcf/src/config/userinfo.dat",
 	"encrypt":"none",
 	"key":"hellotest",
-	"host":"D:/GoProj/wcf/wcf/src/config/server_host.rule",
-	"transport":"D:/GoProj/wcf/wcf/src/config/transport.json",
+	"host":"./wcf/src/config/server_host.rule",
+	"transport":"./wcf/src/config/transport.json",
 	"redirect":{
 		"enable":true,
 		"redirector":"http",
-		"redirect_config":"D:/GoProj/wcf/wcf/src/config/redirect.json"
+		"redirect_config":"./wcf/src/config/redirect.json"
 	},
 	"report":{
 		"enable":true,
 		"visitor":"json",
-		"visitor_config":"D:/GoProj/wcf/wcf/src/config/visitor/json/visitor.json"
+		"visitor_config":"./wcf/src/config/visitor/json/visitor.json"
 	}
 }

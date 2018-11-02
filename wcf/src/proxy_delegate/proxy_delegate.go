@@ -14,6 +14,6 @@ func DialTimeout(network string, addr string, px string, timeout time.Duration) 
 	return proxy.DialTimeout(network, addr, px, timeout)
 }
 
-func Bind(network string, addr string) (proxy.ProxyListener, error) {
-	return proxy.Bind(network, addr)
+func Bind(network string, addr string, extra interface{}) (proxy.ProxyListener, error) {
+	return proxy.Bind(network, addr, extra)
 }

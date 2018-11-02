@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	proxy.Regist("socks", func(addr string) (proxy.ProxyListener, error) {
+	proxy.Regist("socks", func(addr string, extra interface{}) (proxy.ProxyListener, error) {
 		return Bind(addr)
 	})
 }

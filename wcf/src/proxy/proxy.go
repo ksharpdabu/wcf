@@ -43,7 +43,7 @@ type ProxyListener interface {
 	AddHostHook(HostCheckFunc)
 }
 
-type BindFunc func(string) (ProxyListener, error)
+type BindFunc func(string, interface{}) (ProxyListener, error)
 type DialFunc func(addr string, proxy string, timeout time.Duration) (net.Conn, error)
 
 type bindst struct {
@@ -64,9 +64,9 @@ func Regist(network string, fun BindFunc) {
 	bt.mp[network] = fun
 }
 
-func Bind(network string, addr string) (ProxyListener, error) {
+func Bind(network string, addr string, extra interface{}) (ProxyListener, error) {
 	if v, ok := bt.mp[network]; ok {
-		return v(addr)
+		return v(addr, extra)
 	}
 	return nil, errors.New(fmt.Sprintf("bind unsupport protocol:%s", network))
 }

@@ -14,7 +14,7 @@ import (
 var PROXY_RSP_SUCC = []byte("HTTP/1.1 200 connection established\r\n\r\n")
 
 func init() {
-	proxy.Regist("http", func(addr string) (proxy.ProxyListener, error) {
+	proxy.Regist("http", func(addr string, extra interface{}) (proxy.ProxyListener, error) {
 		return Bind(addr)
 	})
 }
