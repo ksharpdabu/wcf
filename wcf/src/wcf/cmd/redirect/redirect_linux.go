@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	_ "net/http/pprof"
 	"wcf"
-	log "github.com/sirupsen/logrus"
 )
 
 var config *string = flag.String("config", "D:/GoProj/wcf_proj/src/wcf/cmd/redirect/redirect.json", "config file")
