@@ -152,7 +152,7 @@ func (this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	var address string
 	if conn.GetTargetOPType() == proxy.OP_TYPE_FORWARD {
 		if !ui.EnableForward {
-			logger.Errorf("User no allaw use forward option, skip, user:%s, addr:%s:%d, conn:%s",
+			logger.Errorf("User not allow to use forward option, skip, user:%s, addr:%s:%d, conn:%s",
 				ui.User, conn.GetTargetName(), conn.GetTargetPort(), conn.RemoteAddr())
 			return
 		}
