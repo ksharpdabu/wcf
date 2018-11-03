@@ -109,7 +109,7 @@ func TestSRLittle(t *testing.T) {
 		defer func() {
 			wg.Done()
 		}()
-		for i := 0; i < 1; i++ {
+		for i := 0; i < 1000000; i++ {
 			data := buildFrameData([]byte(fmt.Sprintf("helloworld:%d", i)))
 			net_utils.SendSpecLen(conn, data)
 			//log.Infof("send:%s", string(data[4:len(data) - 4]))

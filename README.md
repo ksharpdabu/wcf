@@ -4,7 +4,7 @@
 [![Build Status](https://travis-ci.org/xxxsen/wcf.svg?branch=master)](https://travis-ci.org/xxxsen/wcf)
 
 ## 编译方式
-**简单点可以使用wcf目录下的build.bat进行编译, 缺少的依赖项需要自己手动go get获取。**
+**简单点可以使用wcf目录下的build_all.sh进行编译, 缺少的依赖项需要自己手动go get获取。**
 ```shell
 git clone https://github.com/xxxsen/wcf.git --depth=1
 #进到工程根目录(bin, pkg, src所在的目录为根目录)
@@ -17,7 +17,7 @@ cd src/wcf/cmd/local
 go build
 
 #生成远程端
-cd src/wcf/cmd/server 
+cd src/wcf/cmd/server
 go build
 ```
 编译完会在local和server目录下分别生成对应的可执行文件, 如果不知道怎么编译的,可以到 [发布页](https://github.com/xxxsen/wcf/releases) 下载已经生成好的文件。
@@ -29,13 +29,13 @@ go build
 	"localaddr": [
 		{"name":"socks", "address":"127.0.0.1:8010"},
 		{"name":"http", "address":"127.0.0.1:8011"},
-		{"name":"forward", "address":"127.0.0.1:8012"}
+		{"name":"forward", "address":"127.0.0.1:8012", "extra":"127.0.0.1:36000"}
 	],
 	"loadbalance":{
-		"enable":true, 
+		"enable":true,
 		"max_errcnt":2,
 		"max_failtime":30
-	},	
+	},
 	"proxyaddr":[
 		{"addr":"127.0.0.1:8020", "weight":100, "protocol":"tcp"}
 	],
@@ -50,6 +50,9 @@ go build
 }
 ```
 * localaddr 为本地监听的地址, 目前支持3种代理, socks5, http, forward(透传)
+* * name 代理的名称
+* * address 监听地址
+* * extra 额外参数, 不是所有的代理都有, 目前只有forward有, 为要中转的地址。
 * loadbalance 负载均衡模块
 * * max_errcnt 连接错误多少次会被踢掉
 * * max_failtime 连接被踢掉后多久重新可用, 单位为秒
@@ -61,22 +64,21 @@ go build
 * user/pwd 鉴权用的用户名和密码
 * timeout 链接超时时间, 单位是秒
 * host 这个是用来配置本地host的, 一行一个配置,由域名, 操作类型, 替换域名(可选)组成, 例如baidu.com,proxy[,google.com], 分3种操作类型,block, proxy, direct, 分别代表黑名单(禁止链接), 走代理, 直连, 具体的可以看下面的配置
-* encrypt 加密方式, 目前只有xor, comp, 想了下, 貌似只要混淆就能FQ, 所以就只搞了这2种
+* encrypt 加密方式, 目前支持xor, aes-256-gcm, aes-192-gcm, aes-128-gcm
 * key 加密的key
 * transport 协议配置, 同server端的配置, 可以共用一个
 
 #### host配置
-```host.rule 
+```host.rule
 #一行一个配置, 井号开头的为注释
-#可以只配置域名,操作类型, 也可以配置替换域名
+#可以只配置域名,操作类型
 #支持cidr,server端请务必将内网的地址给block掉, 不然会有安全风险
-#替换的域名只能是域名或者ip, 不能为cidr
 #配置的域名不只影响自身, 还会影响其子域名
 #如下面的几行
 127.0.0.0/8,direct
 192.168.0.0/16,direct
 baidu.com,block
-www.test.com,direct,127.0.0.1
+www.test.com,direct
 google.com,proxy
 ```
 
@@ -89,7 +91,7 @@ google.com,proxy
 		{"address":"127.0.0.1:8022", "protocol":"tcp_tls"}
 	],
 	"timeout":5,
-	"userinfo":"D:/GoProj/wcf_proj/src/wcf/cmd/server/userinfo.dat",
+	"userinfo":"d:/userinfo.dat",
 	"encrypt":"none",
 	"key":"hellotest",
 	"host":"d:/host.rule",
@@ -152,7 +154,7 @@ google.com,proxy
 ```
 ##### 参数说明
 * kcp 妈蛋, 这2个参数我都不知道干嘛的, 具体的可以去kcp的github页面看下说明, 我这里用的是默认的2个参数。
-* * data_shards  
+* * data_shards
 * * parity_shards
 * tcp_tls 说白了就是tls, 这个协议主要是用于伪装https
 * * pem_file pem文件或者crt文件都ok
@@ -219,16 +221,14 @@ google.com,proxy
 #### 用户配置信息说明
 以json line方式进行配置, 一行一个用户。
 ```json
-{"user":"test", "pwd":"xxx", "forward":{"enable":true, "address":"127.0.0.1:8000"}, "max_conn":100, "speed":{"enable":true, "per_conn":{"read":200, "write":200}}}
-{"user":"hello", "pwd":"world", "forward":{"enable":false}}
+{"user":"test", "pwd":"xxx", "enable_forward":true, "max_conn":100, "speed":{"enable":true, "per_conn":{"read":200, "write":200}}}
+{"user":"hello", "pwd":"world", "enable_forward":false}
 {"user":"xxxtc", "pwd":"hahaa"}
 ```
 
 * user 用户名
 * pwd 密码
-* forward 当为透传的时候才使用
-* * enable 启用透传
-* * address 链接指向
+* enable_forward 为用户启用透传选项, 切记, 这个会让用户访问到你的内网, 确认为可信用户才开启
 * max_conn 指定该用户最大的链接数,避免把server端拖崩, 不建议设置太小, 会导致用户打不开页面。
 * speed 速度限制相关
 * * enable 是否启用速度限制
