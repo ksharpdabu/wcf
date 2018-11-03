@@ -2,6 +2,7 @@ package mix_delegate
 
 import (
 	"mix_layer"
+	_ "mix_layer/aes/aes_gcm"
 	_ "mix_layer/comp"
 	_ "mix_layer/xor"
 	"net"
