@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"net"
 	"net_utils"
+	"sync"
 )
 
 type MixLayerAdaptor struct {
@@ -21,6 +22,27 @@ type MixLayerAdaptor struct {
 }
 
 const MAX_CRYPT_PACKET_LEN = 64 * 1024
+
+var cryptMemPool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, MAX_CRYPT_PACKET_LEN)
+	},
+}
+
+func PKCS5Padding(src []byte, blockSize int) []byte {
+	padding := blockSize - len(src)%blockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	totalData := make([]byte, len(src)+len(padtext))
+	copy(totalData, src)
+	copy(totalData[len(src):], padtext)
+	return totalData
+}
+
+func PKCS5UnPadding(src []byte) []byte {
+	length := len(src)
+	unpadding := int(src[length-1])
+	return src[:(length - unpadding)]
+}
 
 func EncodeHeadFrame(src []byte, dst []byte) (int, error) {
 	if len(dst) < len(src)+4 {
@@ -69,7 +91,9 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 		this.decbuf.Next(n)
 		return n, nil
 	}
-	tmp := make([]byte, MAX_CRYPT_PACKET_LEN)
+	tmp := cryptMemPool.Get().([]byte)
+	defer cryptMemPool.Put(tmp)
+	//tmp := make([]byte, MAX_CRYPT_PACKET_LEN)
 	index := 0
 	var err error
 	for {
@@ -83,8 +107,12 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 			break
 		}
 	}
-	enc := make([]byte, MAX_CRYPT_PACKET_LEN)
-	raw := make([]byte, MAX_CRYPT_PACKET_LEN)
+	enc := tmp
+	raw := cryptMemPool.Get().([]byte)
+	//defer cryptMemPool.Put(enc)
+	defer cryptMemPool.Put(raw)
+	//enc := make([]byte, MAX_CRYPT_PACKET_LEN)
+	//raw := make([]byte, MAX_CRYPT_PACKET_LEN)
 	for {
 		frameLen, err := CheckHeadFrame(this.rbuf.Bytes(), MAX_CRYPT_PACKET_LEN)
 		if err != nil || frameLen < 0 {
@@ -117,19 +145,23 @@ func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
 	if len(b) >= 2*MAX_CRYPT_PACKET_LEN/3 {
 		b = b[:2*MAX_CRYPT_PACKET_LEN/3]
 	}
-	enc := make([]byte, MAX_CRYPT_PACKET_LEN)
+	enc := cryptMemPool.Get().([]byte)
+	defer cryptMemPool.Put(enc)
+	//enc := make([]byte, MAX_CRYPT_PACKET_LEN)
 	encLen, err := this.coder.Encode(b, enc)
 	if err != nil {
 		return 0, err
 	}
-	enc = enc[:encLen]
-	frame := make([]byte, MAX_CRYPT_PACKET_LEN)
-	frameLen, err := EncodeHeadFrame(enc, frame)
+	encData := enc[:encLen]
+	frame := cryptMemPool.Get().([]byte)
+	defer cryptMemPool.Put(frame)
+	//frame := make([]byte, MAX_CRYPT_PACKET_LEN)
+	frameLen, err := EncodeHeadFrame(encData, frame)
 	if err != nil {
 		return 0, err
 	}
-	frame = frame[:frameLen]
-	if err = net_utils.SendSpecLen(this.Conn, frame); err != nil {
+	frameData := frame[:frameLen]
+	if err = net_utils.SendSpecLen(this.Conn, frameData); err != nil {
 		return 0, err
 	}
 	return len(b), nil
