@@ -1,4 +1,4 @@
-package aes_layer
+package mix_layer
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"net_utils"
 )
 
-type Aes struct {
+type MixLayerAdaptor struct {
 	net.Conn
 	key    []byte
 	ivKey  []byte
@@ -20,7 +20,7 @@ type Aes struct {
 	decbuf bytes.Buffer
 }
 
-const MAX_AES_PACKET_LEN = 64 * 1024
+const MAX_CRYPT_PACKET_LEN = 64 * 1024
 
 func EncodeHeadFrame(src []byte, dst []byte) (int, error) {
 	if len(dst) < len(src)+4 {
@@ -56,28 +56,20 @@ func DecodeHeadFrame(src []byte, dst []byte) (int, error) {
 	return copy(dst, src[4:sz]), nil
 }
 
-func (this *Aes) SetKey(key string) {
+func (this *MixLayerAdaptor) SetKey(key string) {
 	iv := md5.Sum([]byte(key))
 	k := sha1.Sum([]byte(key))
 	this.ivKey = []byte(iv[:])
 	this.key = []byte(k[:])
 }
 
-func (this *Aes) encrypt(src []byte) ([]byte, error) {
-	return this.coder.Encode(src)
-}
-
-func (this *Aes) decrypt(dst []byte) ([]byte, error) {
-	return this.coder.Decode(dst)
-}
-
-func (this *Aes) Read(b []byte) (int, error) {
+func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 	if this.decbuf.Len() != 0 {
 		n := copy(b, this.decbuf.Bytes())
 		this.decbuf.Next(n)
 		return n, nil
 	}
-	tmp := make([]byte, 16*1024)
+	tmp := make([]byte, MAX_CRYPT_PACKET_LEN)
 	index := 0
 	var err error
 	for {
@@ -86,29 +78,31 @@ func (this *Aes) Read(b []byte) (int, error) {
 			return 0, err
 		}
 		this.rbuf.Write(tmp[:index])
-		cnt, err := CheckHeadFrame(this.rbuf.Bytes(), MAX_AES_PACKET_LEN)
+		cnt, err := CheckHeadFrame(this.rbuf.Bytes(), MAX_CRYPT_PACKET_LEN)
 		if cnt != 0 || err != nil {
 			break
 		}
 	}
-	buf := make([]byte, MAX_AES_PACKET_LEN)
+	enc := make([]byte, MAX_CRYPT_PACKET_LEN)
+	raw := make([]byte, MAX_CRYPT_PACKET_LEN)
 	for {
-		cnt, err := CheckHeadFrame(this.rbuf.Bytes(), MAX_AES_PACKET_LEN)
-		if err != nil || cnt < 0 {
-			return 0, errors.New(fmt.Sprintf("check frame data fail, err:%v, cnt:%d", err, cnt))
+		frameLen, err := CheckHeadFrame(this.rbuf.Bytes(), MAX_CRYPT_PACKET_LEN)
+		if err != nil || frameLen < 0 {
+			return 0, errors.New(fmt.Sprintf("check frame data fail, err:%v, cnt:%d", err, frameLen))
 		}
-		if cnt == 0 {
+		if frameLen == 0 {
 			break
 		}
-		total, err := DecodeHeadFrame(this.rbuf.Bytes()[:cnt], buf)
+		encLen, err := DecodeHeadFrame(this.rbuf.Bytes()[:frameLen], enc)
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("decode head frame data fail, err:%v", err))
 		}
-		this.rbuf.Next(cnt)
-		raw, err := this.decrypt(buf[:total])
+		this.rbuf.Next(frameLen)
+		rawLen, err := this.coder.Decode(enc[:encLen], raw)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("decode aes data fail, err:%v, data len:%d, coder:%s", err, total, this.coder.Name()))
+			return 0, errors.New(fmt.Sprintf("decode aes data fail, err:%v, data len:%d, coder:%s", err, encLen, this.coder.Name()))
 		}
+		raw = raw[:rawLen]
 		this.decbuf.Write(raw)
 	}
 	if this.decbuf.Len() <= 0 {
@@ -119,30 +113,30 @@ func (this *Aes) Read(b []byte) (int, error) {
 	return cnt, nil
 }
 
-func (this *Aes) Write(b []byte) (int, error) {
-	if len(b) >= 1*MAX_AES_PACKET_LEN/3 {
-		b = b[:1*MAX_AES_PACKET_LEN/3]
+func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
+	if len(b) >= 2*MAX_CRYPT_PACKET_LEN/3 {
+		b = b[:2*MAX_CRYPT_PACKET_LEN/3]
 	}
-	enc, err := this.coder.Encode(b)
+	enc := make([]byte, MAX_CRYPT_PACKET_LEN)
+	encLen, err := this.coder.Encode(b, enc)
 	if err != nil {
 		return 0, err
 	}
-	buf := make([]byte, MAX_AES_PACKET_LEN)
-	cnt, err := EncodeHeadFrame(enc, buf)
+	enc = enc[:encLen]
+	frame := make([]byte, MAX_CRYPT_PACKET_LEN)
+	frameLen, err := EncodeHeadFrame(enc, frame)
 	if err != nil {
 		return 0, err
 	}
-	if cnt >= MAX_AES_PACKET_LEN {
-		return 0, errors.New(fmt.Sprintf("encode packet too long, skip, cnt:%d", cnt))
-	}
-	if err = net_utils.SendSpecLen(this.Conn, buf[:cnt]); err != nil {
+	frame = frame[:frameLen]
+	if err = net_utils.SendSpecLen(this.Conn, frame); err != nil {
 		return 0, err
 	}
 	return len(b), nil
 }
 
-func Wrap(key string, conn net.Conn, coder EnDec) (*Aes, error) {
-	as := &Aes{Conn: conn}
+func CryptWrap(key string, conn net.Conn, coder EnDec) (*MixLayerAdaptor, error) {
+	as := &MixLayerAdaptor{Conn: conn}
 	as.SetKey(key)
 	as.coder = coder
 	err := as.coder.Init(as.key, as.ivKey)

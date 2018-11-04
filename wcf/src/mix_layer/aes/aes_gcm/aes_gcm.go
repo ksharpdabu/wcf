@@ -3,10 +3,9 @@ package aes_gcm
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
 	"mix_layer"
-	"mix_layer/aes"
 	"net"
 )
 
@@ -15,13 +14,13 @@ var keypad = []byte("sdjasiku8f2839hy423hddjuaduh2e12")
 
 func init() {
 	mix_layer.Regist("aes-256-gcm", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-		return aes_layer.Wrap(key, conn, NewAesGCM(32))
+		return mix_layer.CryptWrap(key, conn, NewAesGCM(32))
 	})
 	mix_layer.Regist("aes-192-gcm", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-		return aes_layer.Wrap(key, conn, NewAesGCM(24))
+		return mix_layer.CryptWrap(key, conn, NewAesGCM(24))
 	})
 	mix_layer.Regist("aes-128-gcm", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-		return aes_layer.Wrap(key, conn, NewAesGCM(16))
+		return mix_layer.CryptWrap(key, conn, NewAesGCM(16))
 	})
 }
 
@@ -71,14 +70,23 @@ func (this *AesGCM) Name() string {
 	return "aes-gcm"
 }
 
-func (this *AesGCM) Encode(src []byte) ([]byte, error) {
-	return this.encAead.Seal(nil, this.nonce, src, nil), nil
+func (this *AesGCM) Encode(input []byte, output []byte) (int, error) {
+	out := this.encAead.Seal(nil, this.nonce, input, nil)
+	if len(out) > len(output) {
+		return 0, errors.New(fmt.Sprintf("buffer too small, need:%d, output:%d, input:%d", len(out), len(output), len(input)))
+	}
+	cnt := copy(output, out)
+	return cnt, nil
 }
 
-func (this *AesGCM) Decode(dst []byte) ([]byte, error) {
-	return this.decAead.Open(nil, this.nonce, dst, nil)
-}
-
-func (this *AesGCM) Close() error {
-	return nil
+func (this *AesGCM) Decode(input []byte, output []byte) (int, error) {
+	out, err := this.decAead.Open(nil, this.nonce, input, nil)
+	if err != nil {
+		return 0, errors.New(fmt.Sprintf("decode fail, err:%v, in len:%d, out buffer len:%d", err, len(input), len(output)))
+	}
+	if len(out) > len(output) {
+		return 0, errors.New(fmt.Sprintf("buffer too small, need:%d, output:%d, input:%d", len(out), len(output), len(input)))
+	}
+	cnt := copy(output, out)
+	return cnt, nil
 }

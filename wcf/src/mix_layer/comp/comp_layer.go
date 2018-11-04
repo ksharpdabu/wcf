@@ -9,7 +9,7 @@ func init() {
 	//目前使用会产生死循环,先不提供
 	//
 	//mix_layer.Regist("comp", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-	//	return Wrap(key, conn)
+	//    return Wrap(key, conn)
 	//})
 }
 
@@ -47,7 +47,7 @@ func (this *Comp) Write(b []byte) (n int, err error) {
 func Wrap(key string, conn net.Conn) (*Comp, error) {
 	//_, err := gzip.NewReader(conn)
 	//if err != nil {
-	//	return nil, errors.New(fmt.Sprintf("create gz reader fail, err:%v", err))
+	//    return nil, errors.New(fmt.Sprintf("create gz reader fail, err:%v", err))
 	//}
 	writer := gzip.NewWriter(conn)
 	return &Comp{Conn: conn, key: key, r: nil, w: writer}, nil
