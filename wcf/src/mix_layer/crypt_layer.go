@@ -102,8 +102,8 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 		if err != nil {
 			return 0, errors.New(fmt.Sprintf("decode aes data fail, err:%v, data len:%d, coder:%s", err, encLen, this.coder.Name()))
 		}
-		raw = raw[:rawLen]
-		this.decbuf.Write(raw)
+		rawWrite := raw[:rawLen]
+		this.decbuf.Write(rawWrite)
 	}
 	if this.decbuf.Len() <= 0 {
 		return 0, errors.New(fmt.Sprintf("no more data, may has err"))

@@ -2,10 +2,11 @@ package mix_delegate
 
 import (
 	"mix_layer"
+	_ "mix_layer/aes/aes_cbc"
 	_ "mix_layer/aes/aes_cfb"
+	_ "mix_layer/aes/aes_ctr"
 	_ "mix_layer/aes/aes_gcm"
 	_ "mix_layer/aes/aes_ofb"
-	_ "mix_layer/comp"
 	_ "mix_layer/xor"
 	"net"
 )
