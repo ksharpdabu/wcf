@@ -25,6 +25,22 @@ var layer *MixLayer
 func init() {
 	layer = &MixLayer{}
 	layer.mp = make(map[string]WrapFunc)
+	Regist("none", func(key string, conn net.Conn) (MixConn, error) {
+		return &DefaultMixConn{}, nil
+	})
+}
+
+func CheckMixName(name string) bool {
+	_, ok := layer.mp[name]
+	return ok
+}
+
+func GetAllMixName() []string {
+	var result []string
+	for k, _ := range layer.mp {
+		result = append(result, k)
+	}
+	return result
 }
 
 func Regist(name string, fun WrapFunc) error {

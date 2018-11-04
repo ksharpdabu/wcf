@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	log "github.com/sirupsen/logrus"
+	"mix_delegate"
 	"net/http"
 	_ "net/http/pprof"
+	"strings"
 	"transport_delegate"
 	"wcf"
 	"wcf/redirect_delegate"
@@ -35,6 +38,10 @@ func main() {
 		}
 	}
 	log.Infof("Config:%+v", cfg)
+	log.Infof("All support mix name:[%s]", strings.Join(mix_delegate.GetAllMixName(), ","))
+	if !mix_delegate.CheckMixName(cfg.Encrypt) {
+		panic(fmt.Sprintf("could not found mix name:%s", cfg.Encrypt))
+	}
 	cli := wcf.NewServer(cfg)
 	if cli == nil {
 		panic("could not create wcf server")

@@ -80,7 +80,7 @@ func Pipe(src net.Conn, dst net.Conn,
 			sre = srcReadErr
 			dwe = dstWriteErr
 			//if srcRead == 0 || dstWrite == 0 {
-			//	return
+			//    return
 			//}
 			if srcReadErr == nil && dstWriteErr == nil {
 				continue
@@ -109,7 +109,7 @@ func Pipe(src net.Conn, dst net.Conn,
 			dre = dstReadErr
 			swe = srcWriteErr
 			//if dstRead == 0 || srcWrite == 0 {
-			//	return
+			//    return
 			//}
 			if dstReadErr == nil && srcWriteErr == nil {
 				//logrus.Infof("re:%v, we:%v, r:%d, w:%d", dstReadErr, srcWriteErr, dstRead, srcWrite)
@@ -155,10 +155,10 @@ func DataCopy(src net.Conn, dst net.Conn, buffer []byte) (int, int, error, error
 
 func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
 	//defer func() {
-	//	err := recover()
-	//	if err != nil {
-	//		log.Fatal("copy write panic, err:%v", err)
-	//	}
+	//    err := recover()
+	//    if err != nil {
+	//        log.Fatal("copy write panic, err:%v", err)
+	//    }
 	//} ()
 	buf := make([]byte, 64)
 	readCnt := 0
@@ -185,17 +185,17 @@ func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
 }
 
 //func RecvSpecLen(conn net.Conn, buf []byte) error {
-//	total := len(buf)
-//	index := 0
-//	for ; index < total; {
-//		cur, err := conn.Read(buf[index:])
-//		//log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
-//		if err != nil {
-//			return err
-//		}
-//		index += cur
-//	}
-//	return nil
+//    total := len(buf)
+//    index := 0
+//    for ; index < total; {
+//        cur, err := conn.Read(buf[index:])
+//        //log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
+//        if err != nil {
+//            return err
+//        }
+//        index += cur
+//    }
+//    return nil
 //}
 
 func ResolveRealAddr(addr string) string {

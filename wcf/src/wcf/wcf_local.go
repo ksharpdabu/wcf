@@ -91,7 +91,7 @@ func (this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, net
 	}
 	if rule != check.RULE_PROXY && cfg.RelayType == proxy.OP_TYPE_FORWARD { //强行使用代理
 		logger.Infof("Forward connection rewrite old rule:%s to new rule:%s, forward connection:%s:%d, conn:%s",
-			check.HostRule2String(rule), check.HostRule2String(check.RULE_PROXY), conn.GetTargetName(), conn.GetTargetPort())
+			check.HostRule2String(rule), check.HostRule2String(check.RULE_PROXY), conn.GetTargetName(), conn.GetTargetPort(), conn.RemoteAddr())
 		rule = check.RULE_PROXY
 	}
 	if rule == check.RULE_PROXY {
