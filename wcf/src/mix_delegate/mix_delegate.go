@@ -15,3 +15,11 @@ import (
 func Wrap(name string, key string, conn net.Conn) (mix_layer.MixConn, error) {
 	return mix_layer.Wrap(name, key, conn)
 }
+
+func GetAllMixName() []string {
+	return mix_layer.GetAllMixName()
+}
+
+func CheckMixName(name string) bool {
+	return mix_layer.CheckMixName(name)
+}

@@ -58,7 +58,10 @@ func (this *BlowFish) Decode(input []byte, output []byte) (int, error) {
 	for i := 0; i < len(input); i += this.dec.BlockSize() {
 		this.dec.Decrypt(output[i:], input[i:])
 	}
-	out := mix_layer.PKCS5UnPadding(output[:len(input)])
+	out, err := mix_layer.PKCS5UnPadding(output[:len(input)])
+	if err != nil {
+		return 0, err
+	}
 	cnt := copy(output, out)
 	return cnt, nil
 }

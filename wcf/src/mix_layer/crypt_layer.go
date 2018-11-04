@@ -38,10 +38,13 @@ func PKCS5Padding(src []byte, blockSize int) []byte {
 	return totalData
 }
 
-func PKCS5UnPadding(src []byte) []byte {
+func PKCS5UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
 	unpadding := int(src[length-1])
-	return src[:(length - unpadding)]
+	if length <= unpadding {
+		return nil, errors.New(fmt.Sprintf("invalid pad data, length:%d, unpadding:%d", length, unpadding))
+	}
+	return src[:(length - unpadding)], nil
 }
 
 func EncodeHeadFrame(src []byte, dst []byte) (int, error) {

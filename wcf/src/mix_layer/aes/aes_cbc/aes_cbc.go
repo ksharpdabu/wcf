@@ -74,7 +74,10 @@ func (this *AesCBC) Decode(input []byte, output []byte) (int, error) {
 		return 0, errors.New(fmt.Sprintf("encrypt data invalid data len:%d, block size:%d", len(input), this.dec.BlockSize()))
 	}
 	this.dec.CryptBlocks(output, input)
-	out := mix_layer.PKCS5UnPadding(output[:len(input)])
+	out, err := mix_layer.PKCS5UnPadding(output[:len(input)])
+	if err != nil {
+		return 0, err
+	}
 	cnt := copy(output, out)
 	return cnt, nil
 }
