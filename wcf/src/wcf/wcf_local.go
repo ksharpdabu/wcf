@@ -25,6 +25,12 @@ type LocalClient struct {
 	smartRule *check.SmartRule
 }
 
+var localMemPool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, relay.MAX_BYTE_PER_PACKET)
+	},
+}
+
 func NewClient(config *LocalConfig) *LocalClient {
 	cli := &LocalClient{}
 	cli.config = config
@@ -141,8 +147,10 @@ func (this *LocalClient) handleProxy(conn proxy.ProxyConn, sessionid uint32, net
 	logger.Infof("Connect to proxy/target svr success, target:%s, name:%s, token:%d, protocol:%s, cost:%dms",
 		remote.RemoteAddr(), connAddr, token, protocol, dur)
 	ctx, cancel := context.WithCancel(context.Background())
-	rbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
-	wbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
+	rbuf := localMemPool.Get().([]byte)
+	defer localMemPool.Put(rbuf)
+	wbuf := localMemPool.Get().([]byte)
+	defer localMemPool.Put(wbuf)
 	sr, sw, dr, dw, sre, swe, dre, dwe := net_utils.Pipe(conn, remote, rbuf, wbuf, ctx, cancel, this.config.Timeout)
 	logger.Infof("Data transfer finish, br:%d, bw:%d, pr:%d, pw:%d, bre:%+v, bwe:%+v, pre:%+v, pwe:%+v",
 		sr, sw, dr, dw, sre, swe, dre, dwe)

@@ -6,17 +6,18 @@ import (
 )
 
 var key = []byte("this is a test key....")
-var iv = []byte("this is a test iv...")
+var iv = []byte("this is a test iv...xxxxxxxxxxxxxxxx")
 
 var word = "hello this is a test plain"
 
 func newCTR(keyLen int) (*AesCTR, error) {
-	cfb := NewAesCTR(keyLen)
-	err := cfb.Init(key, iv)
+	ctr := NewAesCTR(keyLen)
+	err := ctr.InitRead(key, iv)
 	if err != nil {
 		return nil, err
 	}
-	return cfb, nil
+	ctr.InitWrite(key, iv)
+	return ctr, nil
 }
 
 func testWithKeyLen(t *testing.T, keyLen int) {

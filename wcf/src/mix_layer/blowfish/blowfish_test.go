@@ -7,14 +7,16 @@ import (
 
 var key = []byte("this is a test key....")
 var word = "hello this is a test plain"
+var iv = []byte("this is a test iv")
 
 func newBlowFish() (*BlowFish, error) {
-	cfb := NewBlowFish()
-	err := cfb.Init(key, nil)
+	fish := NewBlowFish()
+	err := fish.InitRead(key, iv[:fish.IVLen()])
 	if err != nil {
 		return nil, err
 	}
-	return cfb, nil
+	fish.InitWrite(key, iv[:fish.IVLen()])
+	return fish, nil
 }
 
 func TestEnDec(t *testing.T) {

@@ -21,35 +21,41 @@ func init() {
 	})
 }
 
-var keypad = []byte("3rj293hru2i3hr4g32r98fhu7324rf46")
-var ivpad = []byte("fejnnu23h4g3r2n4rsah39r5j21h9r0-")
-
 type AesCBC struct {
-	key []byte
-	iv  []byte
-	enc cipher.BlockMode
-	dec cipher.BlockMode
+	enc    cipher.BlockMode
+	dec    cipher.BlockMode
+	keylen int
 }
 
 func NewAesCBC(keylen int) *AesCBC {
-	ofb := &AesCBC{key: make([]byte, keylen), iv: make([]byte, aes.BlockSize)}
-	copy(ofb.key, keypad)
-	copy(ofb.iv, ivpad)
-	return ofb
+	cbc := &AesCBC{}
+	cbc.keylen = keylen
+	return cbc
 }
 
-func (this *AesCBC) Init(key []byte, iv []byte) error {
-	copy(this.key, key)
-	copy(this.iv, iv)
-	key = this.key
-	iv = this.iv
+func (this *AesCBC) IVLen() int {
+	return aes.BlockSize
+}
+
+func (this *AesCBC) InitRead(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
+	decBlock, err := aes.NewCipher(key)
+	if err != nil {
+		return errors.New(fmt.Sprintf("create enc block fail, err:%v", err))
+	}
+	this.dec = cipher.NewCBCDecrypter(decBlock, iv)
+	return nil
+}
+
+func (this *AesCBC) InitWrite(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
 	encBlock, err := aes.NewCipher(key)
 	if err != nil {
-		return errors.New(fmt.Sprintf("create block fail, err:%v", err))
+		return errors.New(fmt.Sprintf("create enc block fail, err:%v", err))
 	}
-	decBlock, _ := aes.NewCipher(key)
 	this.enc = cipher.NewCBCEncrypter(encBlock, iv)
-	this.dec = cipher.NewCBCDecrypter(decBlock, iv)
 	return nil
 }
 
@@ -71,7 +77,7 @@ func (this *AesCBC) Decode(input []byte, output []byte) (int, error) {
 		return 0, errors.New(fmt.Sprintf("output buffer too small, input len:%d, output len:%d", len(input), len(output)))
 	}
 	if len(input)%this.dec.BlockSize() != 0 {
-		return 0, errors.New(fmt.Sprintf("encrypt data invalid data len:%d, block size:%d", len(input), this.dec.BlockSize()))
+		return 0, errors.New(fmt.Sprintf("decode data invalid data len:%d, block size:%d", len(input), this.dec.BlockSize()))
 	}
 	this.dec.CryptBlocks(output, input)
 	out, err := mix_layer.PKCS5UnPadding(output[:len(input)])

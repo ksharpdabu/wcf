@@ -17,7 +17,7 @@
 	"pwd":"xxx",
 	"timeout":5,
 	"host":"./wcf/src/config/local_host.rule",
-	"encrypt": "none",
+	"encrypt": "aes-256-ctr",
 	"key":"hellotest",
 	"transport":"./wcf/src/config/transport.json"
 }
