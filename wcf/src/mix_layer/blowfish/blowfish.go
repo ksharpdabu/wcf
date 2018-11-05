@@ -23,13 +23,32 @@ func NewBlowFish() *BlowFish {
 	return &BlowFish{}
 }
 
-func (this *BlowFish) Init(key []byte, iv []byte) error {
-	enc, err := blowfish.NewCipher(key)
+func (this *BlowFish) IVLen() int {
+	return 8
+}
+
+func genKey(key []byte, iv []byte) []byte {
+	finalKey := make([]byte, len(key)+len(iv))
+	copy(finalKey, key)
+	copy(finalKey[len(key):], iv)
+	return finalKey
+}
+
+func (this *BlowFish) InitWrite(key []byte, iv []byte) error {
+	enc, err := blowfish.NewCipher(genKey(key, iv))
 	if err != nil {
-		return errors.New(fmt.Sprintf("create blow fish coder fail, err:%v", err))
+		return errors.New(fmt.Sprintf("create blow fish write coder fail, err:%v", err))
 	}
 	this.enc = enc
-	this.dec, _ = blowfish.NewCipher(key)
+	return nil
+}
+
+func (this *BlowFish) InitRead(key []byte, iv []byte) error {
+	dec, err := blowfish.NewCipher(genKey(key, iv))
+	if err != nil {
+		return errors.New(fmt.Sprintf("create blow fish read coder fail, err:%v", err))
+	}
+	this.dec = dec
 	return nil
 }
 
@@ -53,7 +72,7 @@ func (this *BlowFish) Decode(input []byte, output []byte) (int, error) {
 		return 0, errors.New(fmt.Sprintf("output buffer too small, input len:%d, output len:%d", len(input), len(output)))
 	}
 	if len(input)%this.dec.BlockSize() != 0 {
-		return 0, errors.New(fmt.Sprintf("encrypt data invalid data len:%d, block size:%d", len(input), this.dec.BlockSize()))
+		return 0, errors.New(fmt.Sprintf("decode data invalid data len:%d, block size:%d", len(input), this.dec.BlockSize()))
 	}
 	for i := 0; i < len(input); i += this.dec.BlockSize() {
 		this.dec.Decrypt(output[i:], input[i:])

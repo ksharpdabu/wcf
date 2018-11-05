@@ -21,35 +21,47 @@ func init() {
 	})
 }
 
-var keypad = []byte("dfji923ur823hr23iojero2i3hry3dsd")
-var ivpad = []byte("3rm983t9j843u843rj23jr4hseuj83ds")
-
 type AesOFB struct {
-	key []byte
-	iv  []byte
-	enc cipher.Stream
-	dec cipher.Stream
+	enc    cipher.Stream
+	dec    cipher.Stream
+	keylen int
 }
 
 func NewAesOFB(keylen int) *AesOFB {
-	ofb := &AesOFB{key: make([]byte, keylen), iv: make([]byte, aes.BlockSize)}
-	copy(ofb.key, keypad)
-	copy(ofb.iv, ivpad)
+	ofb := &AesOFB{}
+	ofb.keylen = keylen
 	return ofb
 }
 
-func (this *AesOFB) Init(key []byte, iv []byte) error {
-	copy(this.key, key)
-	copy(this.iv, iv)
-	key = this.key
-	iv = this.iv
-	encBlock, err := aes.NewCipher(key)
+func (this *AesOFB) IVLen() int {
+	return aes.BlockSize
+}
+
+func (this *AesOFB) InitWrite(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
+	enc, err := aes.NewCipher(key)
 	if err != nil {
-		return errors.New(fmt.Sprintf("create block fail, err:%v", err))
+		return errors.New(fmt.Sprintf("create write block fail, err:%v", err))
 	}
-	decBlock, _ := aes.NewCipher(key)
-	this.enc = cipher.NewOFB(encBlock, iv)
-	this.dec = cipher.NewOFB(decBlock, iv)
+	this.enc = cipher.NewOFB(enc, iv)
+	if this.enc == nil {
+		return errors.New(fmt.Sprintf("create write ofb fail, iv len:%d", len(iv)))
+	}
+	return nil
+}
+
+func (this *AesOFB) InitRead(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
+	dec, err := aes.NewCipher(key)
+	if err != nil {
+		return errors.New(fmt.Sprintf("create read block fail, err:%v", err))
+	}
+	this.dec = cipher.NewOFB(dec, iv)
+	if this.dec == nil {
+		return errors.New(fmt.Sprintf("create read ofb fail, iv len:%d", len(iv)))
+	}
 	return nil
 }
 

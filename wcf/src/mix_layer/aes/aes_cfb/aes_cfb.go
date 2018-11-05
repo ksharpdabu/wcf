@@ -21,35 +21,41 @@ func init() {
 	})
 }
 
-var keypad = []byte("j823j42384uj23jtekjinr8235n34243")
-var ivpad = []byte("4835y372383768438248y473483748f3")
-
 type AesCFB struct {
-	key []byte
-	iv  []byte
-	enc cipher.Stream
-	dec cipher.Stream
+	enc    cipher.Stream
+	dec    cipher.Stream
+	keylen int
 }
 
 func NewAesCFB(keylen int) *AesCFB {
-	cfb := &AesCFB{key: make([]byte, keylen), iv: make([]byte, aes.BlockSize)}
-	copy(cfb.key, keypad)
-	copy(cfb.iv, ivpad)
+	cfb := &AesCFB{}
+	cfb.keylen = keylen
 	return cfb
 }
 
-func (this *AesCFB) Init(key []byte, iv []byte) error {
-	copy(this.key, key)
-	copy(this.iv, iv)
-	key = this.key
-	iv = this.iv
+func (this *AesCFB) IVLen() int {
+	return aes.BlockSize
+}
+
+func (this *AesCFB) InitRead(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
+	decBlock, err := aes.NewCipher(key)
+	if err != nil {
+		return errors.New(fmt.Sprintf("create dec block fail, err:%v", err))
+	}
+	this.dec = cipher.NewCFBDecrypter(decBlock, iv)
+	return nil
+}
+
+func (this *AesCFB) InitWrite(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(iv, this.IVLen())
 	encBlock, err := aes.NewCipher(key)
 	if err != nil {
-		return errors.New(fmt.Sprintf("create block fail, err:%v", err))
+		return errors.New(fmt.Sprintf("create enc block fail, err:%v", err))
 	}
-	decBlock, _ := aes.NewCipher(key)
 	this.enc = cipher.NewCFBEncrypter(encBlock, iv)
-	this.dec = cipher.NewCFBDecrypter(decBlock, iv)
 	return nil
 }
 

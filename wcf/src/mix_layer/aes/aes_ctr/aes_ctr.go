@@ -21,35 +21,47 @@ func init() {
 	})
 }
 
-var keypad = []byte("54ug8hdf3287hrh32r87ywh3ru73rwje")
-var ivpad = []byte("sdrj3825uy849hfj9843h523rj3ir3rd")
-
 type AesCTR struct {
-	key []byte
-	iv  []byte
-	enc cipher.Stream
-	dec cipher.Stream
+	enc    cipher.Stream
+	dec    cipher.Stream
+	keylen int
 }
 
 func NewAesCTR(keylen int) *AesCTR {
-	ctr := &AesCTR{key: make([]byte, keylen), iv: make([]byte, aes.BlockSize)}
-	copy(ctr.key, keypad)
-	copy(ctr.iv, ivpad)
+	ctr := &AesCTR{}
+	ctr.keylen = keylen
 	return ctr
 }
 
-func (this *AesCTR) Init(key []byte, iv []byte) error {
-	copy(this.key, key)
-	copy(this.iv, iv)
-	key = this.key
-	iv = this.iv
+func (this *AesCTR) IVLen() int {
+	return aes.BlockSize
+}
+
+func (this *AesCTR) InitWrite(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(key, this.IVLen())
 	encBlock, err := aes.NewCipher(key)
 	if err != nil {
-		return errors.New(fmt.Sprintf("create block fail, err:%v", err))
+		return errors.New(fmt.Sprintf("create enc block fail, err:%v", err))
 	}
-	decBlock, _ := aes.NewCipher(key)
 	this.enc = cipher.NewCTR(encBlock, iv)
+	if this.enc == nil {
+		return errors.New(fmt.Sprintf("create enc stream fail, iv len:%d", len(iv)))
+	}
+	return nil
+}
+
+func (this *AesCTR) InitRead(key []byte, iv []byte) error {
+	key = mix_layer.GenKeyWithPad(key, this.keylen)
+	iv = mix_layer.GenKeyWithPad(key, this.IVLen())
+	decBlock, err := aes.NewCipher(key)
+	if err != nil {
+		return errors.New(fmt.Sprintf("create dec block fail, err:%v", err))
+	}
 	this.dec = cipher.NewCTR(decBlock, iv)
+	if this.dec == nil {
+		return errors.New(fmt.Sprintf("create dec stream fail, iv len:%d", len(iv)))
+	}
 	return nil
 }
 

@@ -6,17 +6,18 @@ import (
 )
 
 var key = []byte("this is a test key....")
-var iv = []byte("this is a test iv...")
+var iv = []byte("xthis is a test iv...")
 
 var word = "hello this is a test plain"
 
 func newCBC(keyLen int) (*AesCBC, error) {
-	cfb := NewAesCBC(keyLen)
-	err := cfb.Init(key, iv)
+	cbc := NewAesCBC(keyLen)
+	err := cbc.InitRead(key, iv)
 	if err != nil {
 		return nil, err
 	}
-	return cfb, nil
+	cbc.InitWrite(key, iv)
+	return cbc, nil
 }
 
 func testWithKeyLen(t *testing.T, keyLen int) {
