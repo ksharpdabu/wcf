@@ -29,6 +29,12 @@ type RemoteServer struct {
 	reportQueue chan *visit.VisitInfo
 }
 
+var remoteMemPool = &sync.Pool{
+	New: func() interface{} {
+		return make([]byte, relay.MAX_BYTE_PER_PACKET)
+	},
+}
+
 func NewServer(config *ServerConfig) *RemoteServer {
 	cli := &RemoteServer{}
 	cli.config = config
@@ -181,8 +187,10 @@ func (this *RemoteServer) handleProxy(conn *relay.RelayConn, sessionid uint32) {
 	defer func() {
 		remote.Close()
 	}()
-	rbuf := make([]byte, relay.ONE_PER_BUFFER_SIZE)
-	wbuf := make([]byte, relay.MAX_BYTE_PER_PACKET)
+	rbuf := remoteMemPool.Get().([]byte)
+	defer remoteMemPool.Put(rbuf)
+	wbuf := remoteMemPool.Get().([]byte)
+	defer remoteMemPool.Put(wbuf)
 	ctx, cancel := context.WithCancel(context.Background())
 	var transconn net.Conn = conn
 	if ui.Speed.Enable {
