@@ -4,13 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"strings"
-	"sync"
 )
 
 type MixLayer struct {
 	mp map[string]WrapFunc
-	mu sync.Mutex
 }
 
 type WrapFunc func(key string, conn net.Conn) (MixConn, error)
@@ -22,12 +19,17 @@ type MixConn interface {
 
 var layer *MixLayer
 
+func none(key string, conn net.Conn) (MixConn, error) {
+	cn := &DefaultMixConn{conn}
+	cn.SetKey(key)
+	return cn, nil
+}
+
 func init() {
 	layer = &MixLayer{}
 	layer.mp = make(map[string]WrapFunc)
-	Regist("none", func(key string, conn net.Conn) (MixConn, error) {
-		return &DefaultMixConn{}, nil
-	})
+	Regist("none", none)
+	Regist("", none)
 }
 
 func CheckMixName(name string) bool {
@@ -44,8 +46,6 @@ func GetAllMixName() []string {
 }
 
 func Regist(name string, fun WrapFunc) error {
-	layer.mu.Lock()
-	defer layer.mu.Unlock()
 	if _, ok := layer.mp[name]; ok {
 		return errors.New(fmt.Sprintf("name:%s conn already exists", name))
 	}
@@ -62,11 +62,6 @@ func (this *DefaultMixConn) SetKey(string) {
 }
 
 func Wrap(name string, key string, conn net.Conn) (MixConn, error) {
-	if len(name) == 0 || strings.ToLower(name) == "none" {
-		return &DefaultMixConn{conn}, nil
-	}
-	layer.mu.Lock()
-	defer layer.mu.Unlock()
 	if v, ok := layer.mp[name]; ok {
 		return v(key, conn)
 	}

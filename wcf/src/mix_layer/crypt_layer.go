@@ -51,12 +51,11 @@ func PKCS5UnPadding(src []byte) ([]byte, error) {
 	return src[:(length - unpadding)], nil
 }
 
-//datalen(4) + iv(variable) + data(variable) + hmac-sha1(16)
+//datalen(4) + iv(variable) + data(variable) + hmac-sha1(20)
 func EncodeHeadFrame(src []byte, dst []byte, ivin []byte, key []byte) (int, error) {
 	if len(dst) < len(src)+len(ivin)+4+HMAC_LENGTH {
 		return 0, errors.New(fmt.Sprintf("buffer too small, src len:%d, buf len:%d", len(src), len(dst)))
 	}
-
 	binary.BigEndian.PutUint32(dst, uint32(len(src)+len(ivin)+4+HMAC_LENGTH))
 	copy(dst[4:], ivin)
 	copy(dst[4+len(ivin):], src)
