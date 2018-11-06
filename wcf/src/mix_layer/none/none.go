@@ -39,7 +39,7 @@ func (this *None) Name() string {
 	return "none"
 }
 
-//多了一邊複製, 但是整體上統一了。。
+//多了一遍複製, 但是整體上統一了。。
 func (this *None) Encode(input []byte, output []byte) (int, error) {
 	if len(output) < len(input) {
 		return 0, errors.New(fmt.Sprintf("output buffer too small, acquire:%d, get:%d", len(input), len(output)))

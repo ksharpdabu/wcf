@@ -45,7 +45,7 @@ func EncodeHeadFrame(src []byte, dst []byte, ivin []byte, key []byte) (int, erro
 }
 
 func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
-	if len(src) <= 4+HMAC_LENGTH+ivlen {
+	if len(src) < 4 {
 		return 0, nil
 	}
 	total := int(binary.BigEndian.Uint32(src))
@@ -56,6 +56,9 @@ func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
 		return -1, errors.New(fmt.Sprintf("data too long, skip, data len:%d, max len:%d", total, maxData))
 	}
 	if total > len(src) {
+		return 0, nil
+	}
+	if len(src) <= 4+HMAC_LENGTH+ivlen {
 		return 0, nil
 	}
 	return total, nil

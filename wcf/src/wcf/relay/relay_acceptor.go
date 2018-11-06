@@ -124,6 +124,11 @@ func (this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 		for index < total {
 			cnt, err := conn.Read(buf[index:])
 			if err != nil {
+				if _, ok := err.(net.Error); !ok { //非網絡錯誤的情況下, 進行錯誤代理, 否則直接關閉鏈接
+					cn.Conn = conn
+					cn.errmsg = err
+					return cn, nil
+				}
 				return nil, errors.New(fmt.Sprintf("relay conn recv buf head fail, err:%v, conn:%s", err, conn.RemoteAddr()))
 			}
 			index += cnt
@@ -142,9 +147,8 @@ func (this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 				}
 			}
 		}
-		cn.Conn = &ExtraConn{conn, buf[:index]}
-		cn.errmsg = ckErr
-		return cn, nil
+		//正常來説不應該觸發這個位置, 因爲外層的加密協議已經有報文完整性校驗了。
+		return cn, errors.New(fmt.Sprintf("invalid pkt err, err:%v", ckErr))
 	}
 	result := this.OnAuth(auth.GetUser(), auth.GetPwd())
 	if !result {
@@ -190,8 +194,10 @@ func (this *RelayAcceptor) Start() error {
 				this.connectionList <- &connrecv{nil, err}
 			}
 			go func() {
+				var tconn mix_layer.MixConn
+				var err error
 				if this.mixFunc != nil {
-					tconn, err := this.mixFunc(conn)
+					tconn, err = this.mixFunc(conn)
 					if err != nil {
 						this.connectionList <- &connrecv{nil, err}
 						conn.Close()
@@ -206,6 +212,11 @@ func (this *RelayAcceptor) Start() error {
 					this.connectionList <- &connrecv{nil, err}
 					conn.Close()
 				} else {
+					//協議錯誤的情況下, 禁用編解碼, 使用裸數據
+					if !client.GetHandshakeResult() {
+						tconn.DisableDecode()
+						tconn.DisableEncode()
+					}
 					this.connectionList <- &connrecv{client, nil}
 				}
 			}()
