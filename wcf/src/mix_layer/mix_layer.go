@@ -15,21 +15,15 @@ type WrapFunc func(key string, conn net.Conn) (MixConn, error)
 type MixConn interface {
 	net.Conn
 	SetKey(string)
+	DisableEncode()
+	DisableDecode()
 }
 
 var layer *MixLayer
 
-func none(key string, conn net.Conn) (MixConn, error) {
-	cn := &DefaultMixConn{conn}
-	cn.SetKey(key)
-	return cn, nil
-}
-
 func init() {
 	layer = &MixLayer{}
 	layer.mp = make(map[string]WrapFunc)
-	Regist("none", none)
-	Regist("", none)
 }
 
 func CheckMixName(name string) bool {
@@ -51,14 +45,6 @@ func Regist(name string, fun WrapFunc) error {
 	}
 	layer.mp[name] = fun
 	return nil
-}
-
-type DefaultMixConn struct {
-	net.Conn
-}
-
-func (this *DefaultMixConn) SetKey(string) {
-
 }
 
 func Wrap(name string, key string, conn net.Conn) (MixConn, error) {

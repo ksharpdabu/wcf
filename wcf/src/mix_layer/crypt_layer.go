@@ -2,10 +2,7 @@ package mix_layer
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha1"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -16,12 +13,14 @@ import (
 
 type MixLayerAdaptor struct {
 	net.Conn
-	key      []byte
-	ivKey    []byte
-	coder    EnDec
-	rbuf     bytes.Buffer
-	decbuf   bytes.Buffer
-	initRead bool
+	key          []byte
+	ivKey        []byte
+	coder        EnDec
+	rbuf         bytes.Buffer
+	decbuf       bytes.Buffer
+	initRead     bool
+	enableEncode bool
+	enableDecode bool
 }
 
 const MAX_CRYPT_PACKET_LEN = 64 * 1024
@@ -33,79 +32,30 @@ var cryptMemPool = &sync.Pool{
 	},
 }
 
-func PKCS5Padding(src []byte, blockSize int) []byte {
-	padding := blockSize - len(src)%blockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	totalData := make([]byte, len(src)+len(padtext))
-	copy(totalData, src)
-	copy(totalData[len(src):], padtext)
-	return totalData
-}
-
-func PKCS5UnPadding(src []byte) ([]byte, error) {
-	length := len(src)
-	unpadding := int(src[length-1])
-	if length <= unpadding {
-		return nil, errors.New(fmt.Sprintf("invalid pad data, length:%d, unpadding:%d", length, unpadding))
-	}
-	return src[:(length - unpadding)], nil
-}
-
-//datalen(4) + iv(variable) + data(variable) + hmac-sha1(20)
-func EncodeHeadFrame(src []byte, dst []byte, ivin []byte, key []byte) (int, error) {
-	if len(dst) < len(src)+len(ivin)+4+HMAC_LENGTH {
-		return 0, errors.New(fmt.Sprintf("buffer too small, src len:%d, buf len:%d", len(src), len(dst)))
-	}
-	binary.BigEndian.PutUint32(dst, uint32(len(src)+len(ivin)+4+HMAC_LENGTH))
-	copy(dst[4:], ivin)
-	copy(dst[4+len(ivin):], src)
-	hasher := hmac.New(sha1.New, key)
-	hasher.Write(dst[4 : 4+len(ivin)+len(src)])
-	hmacSum := hasher.Sum(nil)
-	copy(dst[4+len(ivin)+len(src):], hmacSum)
-	return 4 + len(src) + len(ivin) + len(hmacSum), nil
-}
-
-func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
-	if len(src) <= 4+HMAC_LENGTH+ivlen {
-		return 0, nil
-	}
-	total := int(binary.BigEndian.Uint32(src))
-	if total <= 0 {
-		return -2, errors.New(fmt.Sprintf("invalid data frame len:%d", total))
-	}
-	if total > maxData {
-		return -1, errors.New(fmt.Sprintf("data too long, skip, data len:%d, max len:%d", total, maxData))
-	}
-	if total > len(src) {
-		return 0, nil
-	}
-	return total, nil
-}
-
-//return decode data len, iv, error
-func DecodeHeadFrame(src []byte, dst []byte, ivout []byte, key []byte) (int, error) {
-	sz, err := CheckHeadFrame(src, len(ivout), MAX_CRYPT_PACKET_LEN)
-	if sz <= 0 {
-		return 0, errors.New(fmt.Sprintf("package check fail, sz:%d, err:%v", sz, err))
-	}
-	hasher := hmac.New(sha1.New, key)
-	hasher.Write(src[4 : len(src)-HMAC_LENGTH])
-	hmacSum := hasher.Sum(nil)
-	if !bytes.Equal(hmacSum, src[len(src)-HMAC_LENGTH:]) {
-		return 0, errors.New(fmt.Sprintf("hmac check fail, acquire hmac:%s, but get hmac:%s",
-			hex.EncodeToString(hmacSum), hex.EncodeToString(src[len(src)-HMAC_LENGTH:])))
-	}
-	ivlen := copy(ivout, src[4:])
-	return copy(dst, src[4+ivlen:sz-HMAC_LENGTH]), nil
-}
-
 func (this *MixLayerAdaptor) SetKey(key string) {
 	k := sha1.Sum([]byte(key))
 	this.key = []byte(k[:])
 }
 
+func (this *MixLayerAdaptor) DisableEncode() {
+	this.enableEncode = false
+}
+
+func (this *MixLayerAdaptor) DisableDecode() {
+	this.enableDecode = false
+}
+
 func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
+	//禁用了解碼后, 原先的數據應該是在rbuf中
+	if !this.enableDecode {
+		if this.rbuf.Len() != 0 {
+			n := copy(b, this.rbuf.Bytes())
+			this.rbuf.Next(n)
+			return n, nil
+		}
+		return this.Conn.Read(b)
+	}
+	//剩下的走正常的解碼流程
 	if this.decbuf.Len() != 0 {
 		n := copy(b, this.decbuf.Bytes())
 		this.decbuf.Next(n)
@@ -175,6 +125,11 @@ func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
 	if len(b) >= 2*MAX_CRYPT_PACKET_LEN/3 {
 		b = b[:2*MAX_CRYPT_PACKET_LEN/3]
 	}
+	//如果禁用了編碼, 那麽直接寫數據就好了
+	if !this.enableEncode {
+		return this.Conn.Write(b)
+	}
+	//否則的話, 需要進行編碼再寫
 	enc := cryptMemPool.Get().([]byte)
 	defer cryptMemPool.Put(enc)
 	encLen, err := this.coder.Encode(b, enc)
@@ -198,26 +153,8 @@ func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func RandIV(sz int) []byte {
-	if sz <= 0 {
-		return nil
-	}
-	iv := make([]byte, sz)
-	rand.Reader.Read(iv)
-	return iv
-}
-
-func GenKeyWithPad(key []byte, padto int) []byte {
-	if len(key) == padto {
-		return key
-	}
-	finalKey := make([]byte, padto)
-	copy(finalKey, key)
-	return finalKey
-}
-
 func CryptWrap(key string, conn net.Conn, coder EnDec) (*MixLayerAdaptor, error) {
-	as := &MixLayerAdaptor{Conn: conn}
+	as := &MixLayerAdaptor{Conn: conn, enableEncode: true, enableDecode: true}
 	as.SetKey(key)
 	as.coder = coder
 	as.ivKey = RandIV(coder.IVLen())
