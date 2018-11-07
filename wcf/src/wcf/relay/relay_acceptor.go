@@ -33,6 +33,8 @@ type RelayAcceptor struct {
 	OnAuth         AuthFunc
 	connectionList chan *connrecv
 	mixFunc        MixWrapFunc
+	timeout        time.Duration
+	aliveTs        time.Duration
 }
 
 func (this *RelayAcceptor) AddMixWrap(fun MixWrapFunc) {
@@ -109,6 +111,18 @@ func WrapListener(listener net.Listener) (*RelayAcceptor, error) {
 	return ra, nil
 }
 
+func (this *RelayAcceptor) SetTimeout(ts time.Duration) {
+	if ts == 0 {
+		ts = time.Second * 1
+	}
+	this.timeout = ts
+}
+
+//報文存活時間, 使用過期報文會被斷開鏈接
+func (this *RelayAcceptor) SetMessageAlive(ts time.Duration) {
+	this.aliveTs = ts
+}
+
 func (this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 	cn := &RelayConn{}
 	cn.Conn = nil
@@ -139,7 +153,8 @@ func (this *RelayAcceptor) doHandshake(conn net.Conn) (*RelayConn, error) {
 		}
 		if ckResult > 0 {
 			var raw []byte
-			raw, ckErr = GetPacketData(buf[:ckResult])
+			//在handshake這裏做應該就夠了。。
+			raw, ckErr = GetPacketDataCheckTs(buf[:ckResult], uint64(this.aliveTs/time.Second*1000))
 			if ckErr == nil {
 				ckErr = proto.Unmarshal(raw, &auth)
 				if ckErr == nil {
@@ -205,7 +220,7 @@ func (this *RelayAcceptor) Start() error {
 						conn = tconn
 					}
 				}
-				conn.SetDeadline(time.Now().Add(10 * time.Second))
+				conn.SetDeadline(time.Now().Add(this.timeout))
 				client, err := this.doHandshake(conn)
 				conn.SetDeadline(time.Time{})
 				if err != nil {

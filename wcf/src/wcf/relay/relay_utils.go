@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"hash/crc32"
+	"time"
 	"wcf/relay/msg"
 )
 
@@ -34,8 +35,7 @@ func CheckRelayPacketReady(data []byte) (int, error) {
 	return CheckRelayPacketReadyWithLength(data, ONE_PER_BUFFER_SIZE)
 }
 
-//单次只能一个包
-func GetPacketData(data []byte) ([]byte, error) {
+func GetPacketDataCheckTs(data []byte, delims uint64) ([]byte, error) {
 	total, err := CheckRelayPacketReady(data)
 	if total <= 0 || err != nil {
 		return nil, errors.New(fmt.Sprintf("check buf fail, v:%d, err:%v", total, err))
@@ -50,13 +50,29 @@ func GetPacketData(data []byte) ([]byte, error) {
 	if crc != pb.GetCrc() {
 		return nil, errors.New(fmt.Sprintf("invalid data, crc not match, calc:%d, carry:%d", crc, pb.GetCrc()))
 	}
+	if delims != 0 {
+		ts := GetCurrentTs()
+		if pb.GetTs()+delims < ts {
+			return nil, errors.New(fmt.Sprintf("data too old, carry ts:%d, current ts:%d, delimis:%d", pb.GetTs(), ts, delims))
+		}
+	}
 	return pb.GetData(), nil
+}
+
+//单次只能一个包
+func GetPacketData(data []byte) ([]byte, error) {
+	return GetPacketDataCheckTs(data, 0)
+}
+
+func GetCurrentTs() uint64 {
+	return uint64(time.Now().UTC().UnixNano() / 1000000)
 }
 
 func BuildDataPacket(data []byte) []byte {
 	pb := msg.DataPacket{}
 	pb.Data = data
 	pb.Crc = proto.Uint32(crc32.Checksum(data, crc32.IEEETable))
+	pb.Ts = proto.Uint64(GetCurrentTs())
 	raw, _ := proto.Marshal(&pb)
 	buffer := make([]byte, 4+1+1+len(raw))
 	binary.BigEndian.PutUint32(buffer, uint32(len(buffer)))

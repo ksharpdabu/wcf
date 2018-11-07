@@ -40,6 +40,7 @@ type ServerConfig struct {
 	TransportConfig string            `json:"transport"`
 	Redirect        RedirectorConfig  `json:"redirect"`
 	ReportVisit     ReportVisitConfig `json:"report"`
+	MessageAlive    time.Duration     `json:"message_alive"`
 }
 
 func NewServerConfig() *ServerConfig {
@@ -55,6 +56,7 @@ func (this *ServerConfig) Parse(file string) error {
 	err = json.Unmarshal(data, this)
 	if err == nil {
 		this.Timeout = this.Timeout * time.Second
+		this.MessageAlive = this.MessageAlive * time.Second
 	}
 	return err
 }

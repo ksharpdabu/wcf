@@ -19,5 +19,6 @@
 		"enable":true,
 		"visitor":"json",
 		"visitor_config":"./wcf/src/config/visitor/json/visitor.json"
-	}
+	},
+	"message_alive": 0
 }
