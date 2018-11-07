@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+func TestGetCurrentTs(t *testing.T) {
+	t.Log(GetCurrentTs())
+}
+
 func TestBuildAndParse(t *testing.T) {
 	data := []byte("hello world this is a test")
 	enc := BuildDataPacket(data)

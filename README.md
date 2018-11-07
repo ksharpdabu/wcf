@@ -105,7 +105,8 @@ google.com,proxy
 		"enable":true,
 		"redirector":"http",
 		"redirect_config":"d:/redirect.json"
-	}
+	},
+	"message_alive":0
 }
 ```
 * localaddr 本地监听地址, 这里是服务端的监听地址, 如果要公网使用, 这里要填为0.0.0.0:8020
@@ -125,6 +126,7 @@ google.com,proxy
 * * * raw 这个适用于server使用tcp协议, 将流量原封不动的透传到指定的host上去, 例如后端可以是一个ssh server 也可以是一个rdp server。
 * * * timeout 适用于所有的传输协议, 在到达指定时长后关闭连接。
 * * redirect_config 配置所有的重定向设置的文件, 直接使用在config目录下面的redirect.json即可。
+* message_alive 报文有效的存活时间, 单位为秒, 需要确保机器的时间跟互联网同步, 设置为非0后, 如果报文的中时间与服务器时间相差超过指定秒数后会强行断开连接, 设置为0则不检测
 
 #### 传输配置(transport.json)
 以json格式进行配置, 每一个协议定义一个map, 分别有2个子对象, bind和dial, 配置只会在初始化的时候加载一次并保存起来。并不是所有的协议都需要有bind和dial的参数, 如果某一项没有可以直接不填, 如果都没有, 那就配置一个空的, 例如里面的那个tcp。

@@ -4,7 +4,7 @@
 	},
 	"raw":{
 		"protocol":"tcp",
-		"target":"127.0.0.1:36000"
+		"target": "192.168.50.142:36000"
 	},
 	"timeout":{
 		"min_duration":1,

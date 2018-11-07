@@ -2,62 +2,80 @@ package xor
 
 import (
 	"crypto/sha1"
+	"errors"
+	"fmt"
 	"mix_layer"
 	"net"
-	"net_utils"
 )
 
 func init() {
 	mix_layer.Regist("xor", func(key string, conn net.Conn) (mix_layer.MixConn, error) {
-		return Wrap(key, conn)
+		return mix_layer.CryptWrap(key, conn, NewXor())
 	})
 }
 
 type Xor struct {
-	net.Conn
-	key    string
-	rIndex int
+	wKey   []byte
+	rKey   []byte
 	wIndex int
+	rIndex int
 }
 
-func (this *Xor) SetKey(key string) {
-	v := sha1.Sum([]byte(key))
-	this.key = string(v[:])
-	this.rIndex = len(key) * 13 % len(this.key)
-	this.wIndex = len(key) * 13 % len(this.key)
+func NewXor() *Xor {
+	return &Xor{}
 }
 
-func (this *Xor) xor(b []byte, loc int) int {
-	for i := 0; i < len(b); i++ {
-		b[i] = b[i] ^ this.key[loc%len(this.key)]
-		//b[i] = b[i] ^ 0xff
+func (this *Xor) IVLen() int {
+	return 13
+}
+
+func genKey(key []byte, iv []byte) []byte {
+	newKey := make([]byte, len(key)+len(iv))
+	copy(newKey, key)
+	copy(newKey[len(key):], iv)
+	shaSum := sha1.Sum(newKey)
+	return shaSum[:]
+}
+
+func (this *Xor) InitWrite(key []byte, iv []byte) error {
+	this.wKey = genKey(key, iv)
+	this.wIndex = 0
+	return nil
+}
+
+func (this *Xor) InitRead(key []byte, iv []byte) error {
+	this.rKey = genKey(key, iv)
+	this.rIndex = 0
+	return nil
+}
+
+func (this *Xor) Name() string {
+	return "xor"
+}
+
+func xor(in []byte, out []byte, key []byte, loc int) int {
+	for i := 0; i < len(in); i++ {
+		out[i] = in[i] ^ key[loc%len(key)]
 		loc++
+	}
+	if loc > 100 {
+		loc = 0
 	}
 	return loc
 }
 
-func (this *Xor) Read(b []byte) (n int, err error) {
-	cnt, err := this.Conn.Read(b)
-	if err != nil {
-		return cnt, err
+func (this *Xor) Encode(input []byte, output []byte) (int, error) {
+	if len(output) < len(input) {
+		return 0, errors.New(fmt.Sprintf("output buffer too small, acquire:%d, get:%d", len(input), len(output)))
 	}
-	this.rIndex = this.xor(b[:cnt], this.rIndex)
-	return cnt, err
+	this.wIndex = xor(input, output, this.wKey, this.wIndex)
+	return len(input), nil
 }
 
-func (this *Xor) Write(b []byte) (int, error) {
-	bf := make([]byte, len(b))
-	copy(bf, b)
-	this.wIndex = this.xor(bf, this.wIndex)
-	err := net_utils.SendSpecLen(this.Conn, bf)
-	if err != nil {
-		return 0, err
+func (this *Xor) Decode(input []byte, output []byte) (int, error) {
+	if len(output) < len(input) {
+		return 0, errors.New(fmt.Sprintf("output buffer too small, acquire:%d, get:%d", len(input), len(output)))
 	}
-	return len(b), nil
-}
-
-func Wrap(key string, conn net.Conn) (*Xor, error) {
-	xor := &Xor{Conn: conn}
-	xor.SetKey(key)
-	return xor, nil
+	this.rIndex = xor(input, output, this.rKey, this.rIndex)
+	return len(input), nil
 }

@@ -216,6 +216,8 @@ func (this *RemoteServer) Start() error {
 			log.Errorf("Relay wrap listener fail, err:%v, protocol:%s, localaddr:%s", err, v.Protocol, v.Address)
 			return err
 		}
+		acceptor.SetTimeout(this.config.Timeout)
+		acceptor.SetMessageAlive(this.config.MessageAlive)
 		acceptor.AddMixWrap(func(conn net.Conn) (mix_layer.MixConn, error) {
 			return mix_delegate.Wrap(this.config.Encrypt, this.config.Key, conn)
 		})

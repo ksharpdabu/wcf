@@ -1,4 +1,4 @@
-package xor
+package none
 
 import (
 	"bytes"
@@ -10,17 +10,16 @@ var key = []byte("this is a test key")
 var iv = []byte("this is a test iv")
 var word = []byte("this is test plain...")
 
-func getXor() *Xor {
-	xor := NewXor()
-	xor.InitRead(key, iv)
-	xor.InitWrite(key, iv)
-	return xor
+func getNone() *None {
+	n := NewNone()
+	n.InitRead(key, iv)
+	n.InitWrite(key, iv)
+	return n
 }
 
-func TestXor_Compare(t *testing.T) {
-	enc := getXor()
-	dec := getXor()
-
+func TestEnDec(t *testing.T) {
+	enc := getNone()
+	dec := getNone()
 	encData := make([]byte, 64*1024)
 	decData := make([]byte, 64*1024)
 	for i := 0; i < 10; i++ {
@@ -37,9 +36,6 @@ func TestXor_Compare(t *testing.T) {
 		decRaw := decData[:decLen]
 		if !bytes.Equal(decRaw, word) {
 			t.Fatalf("dec:%s not equal old:%s", hex.EncodeToString(decRaw), hex.EncodeToString(word))
-		}
-		if bytes.Equal(decRaw, encRaw) {
-			t.Fatalf("enc:%s equal to dec:%s", hex.EncodeToString(encRaw), hex.EncodeToString(decRaw))
 		}
 	}
 }

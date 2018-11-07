@@ -8,6 +8,7 @@ import (
 	_ "mix_layer/aes/aes_gcm"
 	_ "mix_layer/aes/aes_ofb"
 	_ "mix_layer/blowfish"
+	_ "mix_layer/none"
 	_ "mix_layer/xor"
 	"net"
 )
