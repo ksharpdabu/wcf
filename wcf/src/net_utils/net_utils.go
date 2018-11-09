@@ -185,17 +185,17 @@ func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
 }
 
 //func RecvSpecLen(conn net.Conn, buf []byte) error {
-//    total := len(buf)
-//    index := 0
-//    for ; index < total; {
-//        cur, err := conn.Read(buf[index:])
-//        //log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
-//        if err != nil {
-//            return err
-//        }
-//        index += cur
-//    }
-//    return nil
+//	total := len(buf)
+//	index := 0
+//	for ; index < total; {
+//		cur, err := conn.Read(buf[index:])
+//		//log.Printf("Read:%v, client:%s", buf[index:index + cur], conn.RemoteAddr())
+//		if err != nil {
+//			return err
+//		}
+//		index += cur
+//	}
+//	return nil
 //}
 
 func ResolveRealAddr(addr string) string {

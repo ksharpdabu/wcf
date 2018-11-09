@@ -4,6 +4,7 @@ import (
 	"net"
 	"time"
 	"transport"
+	_ "transport/trans_pad"
 )
 
 func InitAllProtocol(file string) error {

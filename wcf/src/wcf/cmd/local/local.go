@@ -12,7 +12,7 @@ import (
 	"wcf"
 )
 
-var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/local.json", "config file")
+var config *string = flag.String("config", "./wcf/src/config/local.json", "config file")
 
 func main() {
 	customFormatter := new(log.TextFormatter)
