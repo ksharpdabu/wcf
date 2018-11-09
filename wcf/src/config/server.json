@@ -2,11 +2,18 @@
 	"localaddr":[
 		{"address":"127.0.0.1:8020", "protocol":"tcp"},
 		{"address":"127.0.0.1:8021", "protocol":"kcp"},
-		{"address":"127.0.0.1:8022", "protocol":"tcp_tls"}
+		{
+			"address": "127.0.0.1:8022",
+			"protocol": "tcp_tls"
+		},
+		{
+			"address": "127.0.0.1:8023",
+			"protocol": "tcp_pad"
+		}
 	],
 	"timeout":2,
 	"userinfo":"./wcf/src/config/userinfo.dat",
-	"encrypt": "aes-256-gcm",
+	"encrypt": "aes-256-cfb",
 	"key":"hellotest",
 	"host":"./wcf/src/config/server_host.rule",
 	"transport":"./wcf/src/config/transport.json",

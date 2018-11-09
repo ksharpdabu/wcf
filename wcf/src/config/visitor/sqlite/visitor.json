@@ -1,6 +1,6 @@
 {
 	"init_template":"create table if not exists visit_record_%s (username VARCHAR(64) NOT NULL,host VARCHAR(1024) NOT NULL,user_from VARCHAR(32) NOT NULL,start_time DATE,end_time DATE,read_cnt BIGINT,write_cnt BIGINT,connect_cost int)",
 	"insert_template":"insert into visit_record_%s(username, host, user_from, start_time, end_time, read_cnt, write_cnt, connect_cost) values(?, ?, ?, ?, ?, ?, ?, ?)",
-	"store_location":"D:/GoProj/visit.db",
+	"store_location": "./visit.db",
 	"pre_create_n_day":3
 }

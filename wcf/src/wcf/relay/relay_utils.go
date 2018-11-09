@@ -32,7 +32,7 @@ func CheckRelayPacketReadyWithLength(data []byte, maxBytes uint32) (int, error) 
 
 //total + 0x2 + FrameBody + 0x3
 func CheckRelayPacketReady(data []byte) (int, error) {
-	return CheckRelayPacketReadyWithLength(data, ONE_PER_BUFFER_SIZE)
+	return CheckRelayPacketReadyWithLength(data, MAX_BYTE_PER_PACKET)
 }
 
 func GetPacketDataCheckTs(data []byte, delims uint64) ([]byte, error) {

@@ -17,8 +17,7 @@ import (
 
 //socks5中带的域名最大就256字节, 其他杂七杂八的数据应该也就128字节差不多了吧？
 const MAX_BYTE_AUTH_PACKET uint32 = 256 + 128
-const MAX_BYTE_PER_PACKET uint32 = 64 * 1024
-const ONE_PER_BUFFER_SIZE uint32 = MAX_BYTE_PER_PACKET + 1024
+const MAX_BYTE_PER_PACKET uint32 = 32 * 1024
 
 type AuthFunc func(user, pwd string) bool
 type MixWrapFunc func(conn net.Conn) (mix_layer.MixConn, error)

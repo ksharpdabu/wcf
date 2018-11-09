@@ -12,17 +12,16 @@ import (
 	"wcf"
 )
 
-var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/local.json", "config file")
+var config *string = flag.String("config", "./wcf/src/config/local.json", "config file")
 
 func main() {
 	customFormatter := new(log.TextFormatter)
 	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
 	log.SetFormatter(customFormatter)
 	customFormatter.FullTimestamp = true
-
 	//go tool pprof http://localhost:6060/debug/pprof/profile
 	go func() {
-		http.ListenAndServe("localhost:6060", nil)
+		http.ListenAndServe("localhost:6062", nil)
 	}()
 	flag.Parse()
 	cfg := wcf.NewLocalConfig()

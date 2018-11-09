@@ -38,10 +38,10 @@ func EncodeHeadFrame(src []byte, dst []byte, ivin []byte, key []byte) (int, erro
 	copy(dst[4:], ivin)
 	copy(dst[4+len(ivin):], src)
 	hasher := hmac.New(sha1.New, key)
-	hasher.Write(dst[4 : 4+len(ivin)+len(src)])
+	hasher.Write(dst[:4+len(ivin)+len(src)])
 	hmacSum := hasher.Sum(nil)
 	copy(dst[4+len(ivin)+len(src):], hmacSum)
-	return 4 + len(src) + len(ivin) + len(hmacSum), nil
+	return 4 + len(src) + len(ivin) + HMAC_LENGTH, nil
 }
 
 func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
@@ -71,7 +71,7 @@ func DecodeHeadFrame(src []byte, dst []byte, ivout []byte, key []byte) (int, err
 		return 0, errors.New(fmt.Sprintf("package check fail, sz:%d, err:%v", sz, err))
 	}
 	hasher := hmac.New(sha1.New, key)
-	hasher.Write(src[4 : len(src)-HMAC_LENGTH])
+	hasher.Write(src[:len(src)-HMAC_LENGTH])
 	hmacSum := hasher.Sum(nil)
 	if !bytes.Equal(hmacSum, src[len(src)-HMAC_LENGTH:]) {
 		return 0, errors.New(fmt.Sprintf("hmac check fail, acquire hmac:%s, but get hmac:%s",

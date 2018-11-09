@@ -151,6 +151,16 @@ google.com,proxy
 		"dial":{
 			"skip_insecure":false
 		}
+	},
+	"tcp_pad": {
+		"bind": {
+			"send_len": 1239,
+			"recv_len": 1973
+		},
+		"dial": {
+			"send_len": 1973,
+			"recv_len": 1239
+		}
 	}
 }
 ```
@@ -162,6 +172,9 @@ google.com,proxy
 * * pem_file pem文件或者crt文件都ok
 * * key_file 私钥文件
 * * skip_insecure 当证书错误的时候是否中断, true为不中断
+* tcp_pad 在请求开始前往通道中塞入一段无意义的字符串, 并接收另一段同样无意义的字符串
+* * send_len 发送的长度
+* * recv_len 接收的长度, 需要注意的是, bind中的send_len跟dial中的recv_len要一致, 同样的dial中的send_len也要跟bind中的recv_len一致。
 
 #### 重定向配置
 目前使用json作为配置, 结构如下, 每个重定向器都有自己的参数配置, 在server启动时进行加载。

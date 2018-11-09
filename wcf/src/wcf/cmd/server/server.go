@@ -13,7 +13,7 @@ import (
 	"wcf/redirect_delegate"
 )
 
-var config *string = flag.String("config", "D:/GoProj/wcf/wcf/src/config/server.json", "config file")
+var config *string = flag.String("config", "./wcf/src/config/server.json", "config file")
 
 func main() {
 	customFormatter := new(log.TextFormatter)
