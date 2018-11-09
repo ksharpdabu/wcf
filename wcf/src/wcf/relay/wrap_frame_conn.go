@@ -64,8 +64,8 @@ func (this *RelayFrameConn) Read(b []byte) (int, error) {
 }
 
 func (this *RelayFrameConn) Write(b []byte) (int, error) {
-	if len(b) > 2*int(MAX_BYTE_PER_PACKET)/3 {
-		b = b[:len(b)*2/3]
+	if len(b) > 4*int(MAX_BYTE_PER_PACKET)/5 {
+		b = b[:len(b)*4/5]
 	}
 	pkt := BuildDataPacket(b)
 	err := net_utils.SendSpecLen(this.Conn, pkt)

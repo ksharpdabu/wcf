@@ -19,10 +19,9 @@ func main() {
 	customFormatter.TimestampFormat = "2006-01-02 15:04:05"
 	log.SetFormatter(customFormatter)
 	customFormatter.FullTimestamp = true
-
 	//go tool pprof http://localhost:6060/debug/pprof/profile
 	go func() {
-		http.ListenAndServe("localhost:6060", nil)
+		http.ListenAndServe("localhost:6062", nil)
 	}()
 	flag.Parse()
 	cfg := wcf.NewLocalConfig()

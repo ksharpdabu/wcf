@@ -23,7 +23,7 @@ type MixLayerAdaptor struct {
 	enableDecode bool
 }
 
-const MAX_CRYPT_PACKET_LEN = 64 * 1024
+const MAX_CRYPT_PACKET_LEN = 32 * 1024
 const HMAC_LENGTH = 20
 
 var cryptMemPool = &sync.Pool{
@@ -122,8 +122,8 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 }
 
 func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
-	if len(b) >= 2*MAX_CRYPT_PACKET_LEN/3 {
-		b = b[:2*MAX_CRYPT_PACKET_LEN/3]
+	if len(b) > 4*MAX_CRYPT_PACKET_LEN/5 {
+		b = b[:4*MAX_CRYPT_PACKET_LEN/5]
 	}
 	//如果禁用了編碼, 那麽直接寫數據就好了
 	if !this.enableEncode {
