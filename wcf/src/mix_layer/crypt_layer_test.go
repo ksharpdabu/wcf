@@ -22,6 +22,22 @@ func TestHMAC_SHA1(t *testing.T) {
 	}
 }
 
+func TestHMAC_SHA1_Sum(t *testing.T) {
+	writer := hmac.New(sha1.New, key)
+	encRaw := []byte("this is a test")
+	encRawWithHMAC := writer.Sum(encRaw)
+	//t.Logf("%s", encRawWithHMAC)
+	if len(encRawWithHMAC) != len(encRaw)+20 {
+		t.Fatal("not expect length!")
+	}
+	writer2 := hmac.New(sha1.New, key)
+	writer.Write(encRaw)
+	hmac2 := writer2.Sum(nil)
+	if !bytes.Equal(hmac2, encRawWithHMAC[len(encRaw):]) {
+		t.Fatal("hmac not equal")
+	}
+}
+
 func TestEncodeAndDecode(t *testing.T) {
 	enc := make([]byte, 64*1024)
 	dec := make([]byte, 64*1024)

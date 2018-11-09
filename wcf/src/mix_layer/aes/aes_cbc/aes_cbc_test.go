@@ -20,6 +20,44 @@ func newCBC(keyLen int) (*AesCBC, error) {
 	return cbc, nil
 }
 
+func BenchmarkEncodeAndDecodeWith(b *testing.B) {
+	var keylen = 24
+	datalen := 32 * 1024
+	enc, err := newCBC(keylen)
+	if err != nil {
+		b.Fatal(err)
+	}
+	data := make([]byte, datalen)
+	dec, _ := newCBC(keylen)
+	encData := make([]byte, 64*1024)
+	decData := make([]byte, 64*1024)
+	for i := 0; i < b.N; i++ {
+		encLen, err := enc.Encode(data, encData)
+		if err != nil {
+			b.Fatal(err)
+		}
+		_, err = dec.Decode(encData[:encLen], decData)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkEncode(b *testing.B) {
+	enc, err := newCBC(32)
+	if err != nil {
+		b.Fatal(err)
+	}
+	encData := make([]byte, 64*1024)
+	//decData := make([]byte, 64*1024)
+	for i := 0; i < b.N; i++ {
+		_, err := enc.Encode([]byte(word), encData)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func testWithKeyLen(t *testing.T, keyLen int) {
 	enc, err := newCBC(keyLen)
 	if err != nil {
