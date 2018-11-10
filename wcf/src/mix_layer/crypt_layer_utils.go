@@ -65,8 +65,8 @@ func CheckHeadFrameWithKey(src []byte, ivlen int, maxData int, key []byte) (int,
 		return 0, nil
 	}
 	total := int(binary.BigEndian.Uint32(src))
-	if total <= 0 {
-		return -2, fmt.Errorf("invalid data frame len:%d", total)
+	if total <= 4+HMAC_LENGTH+ivlen+HMAC_LENGTH {
+		return -2, fmt.Errorf("invalid data frame len:%d, too small", total)
 	}
 	if total > maxData {
 		return -1, fmt.Errorf("data too long, skip, data len:%d, max len:%d", total, maxData)
