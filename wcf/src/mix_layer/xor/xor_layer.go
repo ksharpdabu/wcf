@@ -2,8 +2,6 @@ package xor
 
 import (
 	"crypto/sha1"
-	"errors"
-	"fmt"
 	"mix_layer"
 	"net"
 )
@@ -64,18 +62,14 @@ func xor(in []byte, out []byte, key []byte, loc int) int {
 	return loc
 }
 
-func (this *Xor) Encode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, errors.New(fmt.Sprintf("output buffer too small, acquire:%d, get:%d", len(input), len(output)))
-	}
+func (this *Xor) Encode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	this.wIndex = xor(input, output, this.wKey, this.wIndex)
-	return len(input), nil
+	return output, nil
 }
 
-func (this *Xor) Decode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, errors.New(fmt.Sprintf("output buffer too small, acquire:%d, get:%d", len(input), len(output)))
-	}
+func (this *Xor) Decode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	this.rIndex = xor(input, output, this.rKey, this.rIndex)
-	return len(input), nil
+	return output, nil
 }

@@ -1,4 +1,4 @@
-package blowfish
+package chacha20
 
 import (
 	"encoding/hex"
@@ -9,22 +9,22 @@ var key = []byte("this is a test key....")
 var word = "hello this is a test plain"
 var iv = []byte("this is a test iv")
 
-func newBlowFish() (*BlowFish, error) {
-	fish := NewBlowFish()
-	err := fish.InitRead(key, iv[:fish.IVLen()])
+func newChacha20() (*Chacha20, error) {
+	cha := NewChacha20()
+	err := cha.InitRead(key, iv)
 	if err != nil {
 		return nil, err
 	}
-	fish.InitWrite(key, iv[:fish.IVLen()])
-	return fish, nil
+	cha.InitWrite(key, iv)
+	return cha, nil
 }
 
 func TestEnDec(t *testing.T) {
-	enc, err := newBlowFish()
+	enc, err := newChacha20()
 	if err != nil {
 		t.Fatal(err)
 	}
-	dec, err := newBlowFish()
+	dec, err := newChacha20()
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"net"
 	"net_utils"
-	"sync"
 )
 
 type MixLayerAdaptor struct {
@@ -21,16 +19,11 @@ type MixLayerAdaptor struct {
 	initRead     bool
 	enableEncode bool
 	enableDecode bool
+	rtmp         []byte
 }
 
 const MAX_CRYPT_PACKET_LEN = 32 * 1024
 const HMAC_LENGTH = 20
-
-var cryptMemPool = &sync.Pool{
-	New: func() interface{} {
-		return make([]byte, MAX_CRYPT_PACKET_LEN)
-	},
-}
 
 func (this *MixLayerAdaptor) SetKey(key string) {
 	k := sha1.Sum([]byte(key))
@@ -61,8 +54,6 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 		this.decbuf.Next(n)
 		return n, nil
 	}
-	tmp := cryptMemPool.Get().([]byte)
-	defer cryptMemPool.Put(tmp)
 	index := 0
 	var err error
 	var ivout []byte
@@ -71,50 +62,46 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 		ivout = make([]byte, this.coder.IVLen())
 	}
 	for {
-		index, err = this.Conn.Read(tmp)
+		index, err = this.Conn.Read(this.rtmp)
 		if err != nil {
 			return 0, err
 		}
-		this.rbuf.Write(tmp[:index])
+		this.rbuf.Write(this.rtmp[:index])
 		cnt, err := CheckHeadFrame(this.rbuf.Bytes(), len(ivout), MAX_CRYPT_PACKET_LEN)
 		if cnt != 0 || err != nil {
 			break
 		}
 	}
-	enc := tmp
-	raw := cryptMemPool.Get().([]byte)
-	defer cryptMemPool.Put(raw)
 	for {
 		frameLen, err := CheckHeadFrame(this.rbuf.Bytes(), len(ivout), MAX_CRYPT_PACKET_LEN)
 		if err != nil || frameLen < 0 {
-			return 0, errors.New(fmt.Sprintf("check frame data fail, err:%v, cnt:%d", err, frameLen))
+			return 0, fmt.Errorf("check frame data fail, err:%v, cnt:%d", err, frameLen)
 		}
 		if frameLen == 0 {
 			break
 		}
-		encLen, err := DecodeHeadFrame(this.rbuf.Bytes()[:frameLen], enc, ivout, this.key)
+		encRaw, err := DecodeHeadFrame(this.rbuf.Bytes()[:frameLen], ivout, this.key)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("decode head frame data fail, err:%v", err))
+			return 0, fmt.Errorf("decode head frame data fail, err:%v", err)
 		}
 		if !this.initRead {
 			ierr := this.coder.InitRead(this.key, ivout)
 			if err != nil {
-				return 0, errors.New(fmt.Sprintf("init read coder fail, err:%v, key hex:%s, iv hex:%s",
-					ierr, hex.EncodeToString(this.key), hex.EncodeToString(ivout)))
+				return 0, fmt.Errorf("init read coder fail, err:%v, key hex:%s, iv hex:%s",
+					ierr, hex.EncodeToString(this.key), hex.EncodeToString(ivout))
 			}
 			this.initRead = true
 			ivout = nil
 		}
 		this.rbuf.Next(frameLen)
-		rawLen, err := this.coder.Decode(enc[:encLen], raw)
+		rawWrite, err := this.coder.Decode(encRaw)
 		if err != nil {
-			return 0, errors.New(fmt.Sprintf("decode aes data fail, err:%v, data len:%d, coder:%s", err, encLen, this.coder.Name()))
+			return 0, fmt.Errorf("decode aes data fail, err:%v, data len:%d, coder:%s", err, len(encRaw), this.coder.Name())
 		}
-		rawWrite := raw[:rawLen]
 		this.decbuf.Write(rawWrite)
 	}
 	if this.decbuf.Len() <= 0 {
-		return 0, errors.New(fmt.Sprintf("no more data, may has err"))
+		return 0, fmt.Errorf("no more data, may has err")
 	}
 	cnt := copy(b, this.decbuf.Bytes())
 	this.decbuf.Next(cnt)
@@ -130,23 +117,17 @@ func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
 		return this.Conn.Write(b)
 	}
 	//否則的話, 需要進行編碼再寫
-	enc := cryptMemPool.Get().([]byte)
-	defer cryptMemPool.Put(enc)
-	encLen, err := this.coder.Encode(b, enc)
+	encData, err := this.coder.Encode(b)
 	if err != nil {
 		return 0, err
 	}
-	encData := enc[:encLen]
-	frame := cryptMemPool.Get().([]byte)
-	defer cryptMemPool.Put(frame)
-	frameLen, err := EncodeHeadFrame(encData, frame, this.ivKey, this.key)
+	frameData, err := EncodeHeadFrame(encData, this.ivKey, this.key)
 	if this.ivKey != nil {
 		this.ivKey = nil
 	}
 	if err != nil {
 		return 0, err
 	}
-	frameData := frame[:frameLen]
 	if err = net_utils.SendSpecLen(this.Conn, frameData); err != nil {
 		return 0, err
 	}
@@ -154,14 +135,17 @@ func (this *MixLayerAdaptor) Write(b []byte) (int, error) {
 }
 
 func CryptWrap(key string, conn net.Conn, coder EnDec) (*MixLayerAdaptor, error) {
-	as := &MixLayerAdaptor{Conn: conn, enableEncode: true, enableDecode: true}
+	as := &MixLayerAdaptor{Conn: conn,
+		enableEncode: true, enableDecode: true,
+		rtmp: make([]byte, MAX_CRYPT_PACKET_LEN),
+	}
 	as.SetKey(key)
 	as.coder = coder
 	as.ivKey = RandIV(coder.IVLen())
 	err := as.coder.InitWrite(as.key, as.ivKey)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("init write fail, err:%v, key hex:%s, iv hex:%s",
-			err, hex.EncodeToString(as.key), hex.EncodeToString(as.ivKey)))
+		return nil, fmt.Errorf("init write fail, err:%v, key hex:%s, iv hex:%s",
+			err, hex.EncodeToString(as.key), hex.EncodeToString(as.ivKey))
 	}
 	return as, nil
 }

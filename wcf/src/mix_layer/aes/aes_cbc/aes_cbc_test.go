@@ -29,14 +29,12 @@ func BenchmarkEncodeAndDecodeWith(b *testing.B) {
 	}
 	data := make([]byte, datalen)
 	dec, _ := newCBC(keylen)
-	encData := make([]byte, 64*1024)
-	decData := make([]byte, 64*1024)
 	for i := 0; i < b.N; i++ {
-		encLen, err := enc.Encode(data, encData)
+		encData, err := enc.Encode(data)
 		if err != nil {
 			b.Fatal(err)
 		}
-		_, err = dec.Decode(encData[:encLen], decData)
+		_, err = dec.Decode(encData)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -48,10 +46,9 @@ func BenchmarkEncode(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	encData := make([]byte, 64*1024)
 	//decData := make([]byte, 64*1024)
 	for i := 0; i < b.N; i++ {
-		_, err := enc.Encode([]byte(word), encData)
+		_, err := enc.Encode([]byte(word))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -67,20 +64,18 @@ func testWithKeyLen(t *testing.T, keyLen int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encData := make([]byte, 64*1024)
-	decData := make([]byte, 64*1024)
 	for i := 0; i < 10; i++ {
-		encLen, err := enc.Encode([]byte(word), encData)
+		encData, err := enc.Encode([]byte(word))
 		if err != nil {
 			t.Fatal(err)
 		}
-		decLen, err := dec.Decode(encData[:encLen], decData)
+		decData, err := dec.Decode(encData)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("keylen:%d enc hex:%s, dec hex:%s", keyLen, hex.EncodeToString(encData[:encLen]), hex.EncodeToString(decData[:decLen]))
-		if string(decData[:decLen]) != word {
-			t.Fatalf("not equal, dec:%s, old:%s", string(decData[:decLen]), word)
+		t.Logf("keylen:%d enc hex:%s, dec hex:%s", keyLen, hex.EncodeToString(encData), hex.EncodeToString(decData))
+		if string(decData) != word {
+			t.Fatalf("not equal, dec:%s, old:%s", string(decData), word)
 		}
 	}
 }

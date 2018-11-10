@@ -1,4 +1,4 @@
-package blowfish
+package salsa20
 
 import (
 	"encoding/hex"
@@ -9,22 +9,22 @@ var key = []byte("this is a test key....")
 var word = "hello this is a test plain"
 var iv = []byte("this is a test iv")
 
-func newBlowFish() (*BlowFish, error) {
-	fish := NewBlowFish()
-	err := fish.InitRead(key, iv[:fish.IVLen()])
+func newSalsa20() (*Salsa20, error) {
+	cha := NewSalsa20()
+	err := cha.InitRead(key, iv)
 	if err != nil {
 		return nil, err
 	}
-	fish.InitWrite(key, iv[:fish.IVLen()])
-	return fish, nil
+	cha.InitWrite(key, iv)
+	return cha, nil
 }
 
 func TestEnDec(t *testing.T) {
-	enc, err := newBlowFish()
+	enc, err := newSalsa20()
 	if err != nil {
 		t.Fatal(err)
 	}
-	dec, err := newBlowFish()
+	dec, err := newSalsa20()
 	if err != nil {
 		t.Fatal(err)
 	}

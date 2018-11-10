@@ -69,18 +69,14 @@ func (this *AesOFB) Name() string {
 	return "aes-ofb"
 }
 
-func (this *AesOFB) Encode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, errors.New(fmt.Sprintf("output buffer too small, input len:%d, output len:%d", len(input), len(output)))
-	}
+func (this *AesOFB) Encode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	this.enc.XORKeyStream(output, input)
-	return len(input), nil
+	return output, nil
 }
 
-func (this *AesOFB) Decode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, errors.New(fmt.Sprintf("output buffer too small, input len:%d, output len:%d", len(input), len(output)))
-	}
+func (this *AesOFB) Decode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	this.dec.XORKeyStream(output, input)
-	return len(input), nil
+	return output, nil
 }

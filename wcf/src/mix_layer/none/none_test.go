@@ -20,20 +20,17 @@ func getNone() *None {
 func TestEnDec(t *testing.T) {
 	enc := getNone()
 	dec := getNone()
-	encData := make([]byte, 64*1024)
-	decData := make([]byte, 64*1024)
 	for i := 0; i < 10; i++ {
-		encLen, err := enc.Encode(word, encData)
+		encData, err := enc.Encode(word)
 		if err != nil {
 			t.Fatal(err)
 		}
-		encRaw := encData[:encLen]
-		decLen, err := dec.Decode(encRaw, decData)
+		encRaw := encData
+		decRaw, err := dec.Decode(encRaw)
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Logf("enc:%s, old:%s", hex.EncodeToString(encRaw), hex.EncodeToString(word))
-		decRaw := decData[:decLen]
 		if !bytes.Equal(decRaw, word) {
 			t.Fatalf("dec:%s not equal old:%s", hex.EncodeToString(decRaw), hex.EncodeToString(word))
 		}

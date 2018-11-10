@@ -30,18 +30,17 @@ func PKCS5UnPadding(src []byte) ([]byte, error) {
 }
 
 //datalen(4) + iv(variable) + data(variable) + hmac-sha1(20)
-func EncodeHeadFrame(src []byte, dst []byte, ivin []byte, key []byte) (int, error) {
-	if len(dst) < len(src)+len(ivin)+4+HMAC_LENGTH {
-		return 0, errors.New(fmt.Sprintf("buffer too small, src len:%d, buf len:%d", len(src), len(dst)))
-	}
-	binary.BigEndian.PutUint32(dst, uint32(len(src)+len(ivin)+4+HMAC_LENGTH))
-	copy(dst[4:], ivin)
-	copy(dst[4+len(ivin):], src)
+func EncodeHeadFrame(src []byte, ivin []byte, key []byte) ([]byte, error) {
+	total := len(src) + len(ivin) + 4 + HMAC_LENGTH
+	out := make([]byte, total)
+	binary.BigEndian.PutUint32(out, uint32(total))
+	copy(out[4:], ivin)
+	copy(out[4+len(ivin):], src)
 	hasher := hmac.New(sha1.New, key)
-	hasher.Write(dst[:4+len(ivin)+len(src)])
+	hasher.Write(out[:4+len(ivin)+len(src)])
 	hmacSum := hasher.Sum(nil)
-	copy(dst[4+len(ivin)+len(src):], hmacSum)
-	return 4 + len(src) + len(ivin) + HMAC_LENGTH, nil
+	copy(out[4+len(ivin)+len(src):], hmacSum)
+	return out, nil
 }
 
 func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
@@ -65,20 +64,20 @@ func CheckHeadFrame(src []byte, ivlen int, maxData int) (int, error) {
 }
 
 //return decode data len, iv, error
-func DecodeHeadFrame(src []byte, dst []byte, ivout []byte, key []byte) (int, error) {
+func DecodeHeadFrame(src []byte, ivout []byte, key []byte) ([]byte, error) {
 	sz, err := CheckHeadFrame(src, len(ivout), MAX_CRYPT_PACKET_LEN)
 	if sz <= 0 {
-		return 0, errors.New(fmt.Sprintf("package check fail, sz:%d, err:%v", sz, err))
+		return nil, fmt.Errorf("package check fail, sz:%d, err:%v", sz, err)
 	}
 	hasher := hmac.New(sha1.New, key)
-	hasher.Write(src[:len(src)-HMAC_LENGTH])
+	hasher.Write(src[:sz-HMAC_LENGTH])
 	hmacSum := hasher.Sum(nil)
-	if !bytes.Equal(hmacSum, src[len(src)-HMAC_LENGTH:]) {
-		return 0, errors.New(fmt.Sprintf("hmac check fail, acquire hmac:%s, but get hmac:%s",
-			hex.EncodeToString(hmacSum), hex.EncodeToString(src[len(src)-HMAC_LENGTH:])))
+	if !bytes.Equal(hmacSum, src[sz-HMAC_LENGTH:]) {
+		return nil, fmt.Errorf("hmac check fail, acquire hmac:%s, but get hmac:%s",
+			hex.EncodeToString(hmacSum), hex.EncodeToString(src[sz-HMAC_LENGTH:]))
 	}
 	ivlen := copy(ivout, src[4:])
-	return copy(dst, src[4+ivlen:sz-HMAC_LENGTH]), nil
+	return src[4+ivlen : sz-HMAC_LENGTH], nil
 }
 
 func RandIV(sz int) []byte {
