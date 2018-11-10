@@ -23,7 +23,7 @@ type MixLayerAdaptor struct {
 }
 
 const MAX_CRYPT_PACKET_LEN = 32 * 1024
-const HMAC_LENGTH = 20
+const HMAC_LENGTH = 4
 
 func (this *MixLayerAdaptor) SetKey(key string) {
 	k := sha1.Sum([]byte(key))
@@ -67,7 +67,7 @@ func (this *MixLayerAdaptor) Read(b []byte) (int, error) {
 			return 0, err
 		}
 		this.rbuf.Write(this.rtmp[:index])
-		cnt, err := CheckHeadFrame(this.rbuf.Bytes(), len(ivout), MAX_CRYPT_PACKET_LEN)
+		cnt, err := CheckHeadFrameWithKey(this.rbuf.Bytes(), len(ivout), MAX_CRYPT_PACKET_LEN, this.key)
 		if cnt != 0 || err != nil {
 			break
 		}
