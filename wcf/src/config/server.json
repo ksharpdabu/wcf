@@ -13,7 +13,7 @@
 	],
 	"timeout":2,
 	"userinfo":"./wcf/src/config/userinfo.dat",
-	"encrypt": "salsa20",
+	"encrypt": "blowfish",
 	"key":"hellotest",
 	"host":"./wcf/src/config/server_host.rule",
 	"transport":"./wcf/src/config/transport.json",

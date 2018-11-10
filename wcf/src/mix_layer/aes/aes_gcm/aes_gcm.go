@@ -79,23 +79,14 @@ func (this *AesGCM) Name() string {
 	return "aes-gcm"
 }
 
-func (this *AesGCM) Encode(input []byte, output []byte) (int, error) {
-	out := this.encAead.Seal(nil, this.wnonce, input, nil)
-	if len(out) > len(output) {
-		return 0, errors.New(fmt.Sprintf("buffer too small, need:%d, output:%d, input:%d", len(out), len(output), len(input)))
-	}
-	cnt := copy(output, out)
-	return cnt, nil
+func (this *AesGCM) Encode(input []byte) ([]byte, error) {
+	return this.encAead.Seal(nil, this.wnonce, input, nil), nil
 }
 
-func (this *AesGCM) Decode(input []byte, output []byte) (int, error) {
+func (this *AesGCM) Decode(input []byte) ([]byte, error) {
 	out, err := this.decAead.Open(nil, this.rnonce, input, nil)
 	if err != nil {
-		return 0, errors.New(fmt.Sprintf("decode fail, err:%v, in len:%d, out buffer len:%d", err, len(input), len(output)))
+		return nil, fmt.Errorf("decode fail, err:%v, in len:%d", err, len(input))
 	}
-	if len(out) > len(output) {
-		return 0, errors.New(fmt.Sprintf("buffer too small, need:%d, output:%d, input:%d", len(out), len(output), len(input)))
-	}
-	cnt := copy(output, out)
-	return cnt, nil
+	return out, nil
 }

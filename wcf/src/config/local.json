@@ -21,7 +21,7 @@
 	"pwd":"xxx",
 	"timeout":5,
 	"host":"./wcf/src/config/local_host.rule",
-	"encrypt": "salsa20",
+	"encrypt": "blowfish",
 	"key":"hellotest",
 	"transport":"./wcf/src/config/transport.json"
 }

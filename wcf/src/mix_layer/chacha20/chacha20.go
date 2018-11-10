@@ -56,21 +56,10 @@ func (this *Chacha20) Name() string {
 	return "chacha20"
 }
 
-func (this *Chacha20) Encode(input []byte, output []byte) (int, error) {
-	out := this.enc.Seal(nil, this.wnonce, input, nil)
-	if len(out) > len(output) {
-		return 0, fmt.Errorf("output too small, skip, raw:%d, output buffer:%d", len(out), len(output))
-	}
-	return copy(output, out), nil
+func (this *Chacha20) Encode(input []byte) ([]byte, error) {
+	return this.enc.Seal(nil, this.wnonce, input, nil), nil
 }
 
-func (this *Chacha20) Decode(input []byte, output []byte) (int, error) {
-	out, err := this.dec.Open(nil, this.rnonce, input, nil)
-	if err != nil {
-		return 0, fmt.Errorf("decode fail, err:%v", err)
-	}
-	if len(out) > len(output) {
-		return 0, fmt.Errorf("output too small, skip, raw:%d, output buffer:%d", len(out), len(output))
-	}
-	return copy(output, out), nil
+func (this *Chacha20) Decode(input []byte) ([]byte, error) {
+	return this.dec.Open(nil, this.rnonce, input, nil)
 }

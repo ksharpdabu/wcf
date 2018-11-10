@@ -28,20 +28,18 @@ func TestEnDec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encData := make([]byte, 64*1024)
-	decData := make([]byte, 64*1024)
 	for i := 0; i < 10; i++ {
-		encLen, err := enc.Encode([]byte(word), encData)
+		encData, err := enc.Encode([]byte(word))
 		if err != nil {
 			t.Fatal(err)
 		}
-		decLen, err := dec.Decode(encData[:encLen], decData)
+		decData, err := dec.Decode(encData)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("enc hex:%s, dec hex:%s, enc len:%d, dec len:%d, old len:%d", hex.EncodeToString(encData[:encLen]), hex.EncodeToString(decData[:decLen]), encLen, decLen, len(word))
-		if string(decData[:decLen]) != word {
-			t.Fatalf("not equal, dec:%s, old:%s", string(decData[:decLen]), word)
+		t.Logf("enc hex:%s, dec hex:%s, old len:%d", hex.EncodeToString(encData), hex.EncodeToString(decData), len(word))
+		if string(decData) != word {
+			t.Fatalf("not equal, dec:%s, old:%s", string(decData), word)
 		}
 	}
 }

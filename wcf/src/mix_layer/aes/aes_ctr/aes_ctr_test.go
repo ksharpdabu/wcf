@@ -29,20 +29,18 @@ func testWithKeyLen(t *testing.T, keyLen int) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encData := make([]byte, 64*1024)
-	decData := make([]byte, 64*1024)
 	for i := 0; i < 10; i++ {
-		encLen, err := enc.Encode([]byte(word), encData)
+		encData, err := enc.Encode([]byte(word))
 		if err != nil {
 			t.Fatal(err)
 		}
-		decLen, err := dec.Decode(encData[:encLen], decData)
+		decData, err := dec.Decode(encData)
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Logf("keylen:%d enc hex:%s, dec hex:%s", keyLen, hex.EncodeToString(encData[:encLen]), hex.EncodeToString(decData[:decLen]))
-		if string(decData[:decLen]) != word {
-			t.Fatalf("not equal, dec:%s, old:%s", string(decData[:decLen]), word)
+		t.Logf("keylen:%d enc hex:%s, dec hex:%s", keyLen, hex.EncodeToString(encData), hex.EncodeToString(decData))
+		if string(decData) != word {
+			t.Fatalf("not equal, dec:%s, old:%s", string(decData), word)
 		}
 	}
 }

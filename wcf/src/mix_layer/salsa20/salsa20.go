@@ -2,7 +2,6 @@ package salsa20
 
 import (
 	"crypto/cipher"
-	"fmt"
 	"golang.org/x/crypto/salsa20"
 	"mix_layer"
 	"net"
@@ -52,18 +51,14 @@ func (this *Salsa20) Name() string {
 	return "salsa20"
 }
 
-func (this *Salsa20) Encode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, fmt.Errorf("output buffer too small, need:%d, get:%d", len(input), len(output))
-	}
+func (this *Salsa20) Encode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	salsa20.XORKeyStream(output, input, this.wnonce, &this.wkey)
-	return len(input), nil
+	return output, nil
 }
 
-func (this *Salsa20) Decode(input []byte, output []byte) (int, error) {
-	if len(output) < len(input) {
-		return 0, fmt.Errorf("output buffer too small, need:%d, get:%d", len(input), len(output))
-	}
+func (this *Salsa20) Decode(input []byte) ([]byte, error) {
+	output := make([]byte, len(input))
 	salsa20.XORKeyStream(output, input, this.rnonce, &this.rkey)
-	return len(input), nil
+	return output, nil
 }
