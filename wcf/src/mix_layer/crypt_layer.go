@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net_utils"
-	"sync"
 )
 
 type MixLayerAdaptor struct {

@@ -39,26 +39,23 @@ func TestHMAC_SHA1_Sum(t *testing.T) {
 }
 
 func TestEncodeAndDecode(t *testing.T) {
-	enc := make([]byte, 64*1024)
-	dec := make([]byte, 64*1024)
 	ivin := iv[:20]
-	encLen, err := EncodeHeadFrame(data, enc, ivin, key)
+	enc, err := EncodeHeadFrame(data, ivin, key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	encData := enc[:encLen]
+	encData := enc
 	dataLen, err := CheckHeadFrame(encData, len(ivin), 64*1024)
 	if err != nil || dataLen < 0 {
 		t.Fatal(err)
 	}
 	ivout := make([]byte, HMAC_LENGTH)
-	decLen, err := DecodeHeadFrame(encData, dec, ivout, key)
+	dec, err := DecodeHeadFrame(encData, ivout, key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decData := dec[:decLen]
-	if !bytes.Equal(decData, data) {
-		t.Fatalf("data not equal, hex data out:%s, hex data in:%v", hex.EncodeToString(decData), hex.EncodeToString(data))
+	if !bytes.Equal(dec, data) {
+		t.Fatalf("data not equal, hex data out:%s, hex data in:%v", hex.EncodeToString(dec), hex.EncodeToString(data))
 	}
 	if !bytes.Equal(ivout, ivin) {
 		t.Fatalf("iv not equal, hex ivout:%s, hex ivin:%s", hex.EncodeToString(ivout), hex.EncodeToString(ivin))

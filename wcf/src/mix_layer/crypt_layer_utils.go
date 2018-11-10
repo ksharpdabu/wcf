@@ -33,7 +33,7 @@ func PKCS5UnPadding(src []byte) ([]byte, error) {
 func EncodeHeadFrame(src []byte, ivin []byte, key []byte) ([]byte, error) {
 	total := len(src) + len(ivin) + 4 + HMAC_LENGTH
 	out := make([]byte, total)
-	binary.BigEndian.PutUint32(out, uint32(len(out)))
+	binary.BigEndian.PutUint32(out, uint32(total))
 	copy(out[4:], ivin)
 	copy(out[4+len(ivin):], src)
 	hasher := hmac.New(sha1.New, key)
@@ -70,11 +70,11 @@ func DecodeHeadFrame(src []byte, ivout []byte, key []byte) ([]byte, error) {
 		return nil, fmt.Errorf("package check fail, sz:%d, err:%v", sz, err)
 	}
 	hasher := hmac.New(sha1.New, key)
-	hasher.Write(src[:len(src)-HMAC_LENGTH])
+	hasher.Write(src[:sz-HMAC_LENGTH])
 	hmacSum := hasher.Sum(nil)
-	if !bytes.Equal(hmacSum, src[len(src)-HMAC_LENGTH:]) {
+	if !bytes.Equal(hmacSum, src[sz-HMAC_LENGTH:]) {
 		return nil, fmt.Errorf("hmac check fail, acquire hmac:%s, but get hmac:%s",
-			hex.EncodeToString(hmacSum), hex.EncodeToString(src[len(src)-HMAC_LENGTH:]))
+			hex.EncodeToString(hmacSum), hex.EncodeToString(src[sz-HMAC_LENGTH:]))
 	}
 	ivlen := copy(ivout, src[4:])
 	return src[4+ivlen : sz-HMAC_LENGTH], nil
