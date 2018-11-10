@@ -128,22 +128,17 @@ func cleanNetTimeout(err error) error {
 	return err
 }
 
-func DataCopy(src net.Conn, dst net.Conn, buffer []byte) (int, int, error, error) {
-	cnt, err := src.Read(buffer)
-	if err != nil {
-		return 0, 0, err, nil
+func DataCopy(src io.Reader, dst io.Writer, buffer []byte) (int, int, error, error) {
+	rcnt, rerr := src.Read(buffer)
+	if rerr != nil && rcnt == 0 {
+		return 0, 0, rerr, nil
 	}
-	data := buffer[:cnt]
-	total := len(data)
-	index := 0
-	for index < total {
-		wcnt, werr := dst.Write(data[index:])
-		if werr != nil {
-			return cnt, wcnt, nil, werr
-		}
-		index += wcnt
+	werr := SendSpecLen(dst, buffer[:rcnt])
+	var wcnt = 0
+	if werr == nil {
+		wcnt = rcnt
 	}
-	return cnt, cnt, nil, nil
+	return rcnt, wcnt, rerr, werr
 }
 
 func IsNetTimeoutErr(cerr error) bool {
@@ -156,35 +151,23 @@ func IsNetTimeoutErr(cerr error) bool {
 	return false
 }
 
-func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
-	//defer func() {
-	//    err := recover()
-	//    if err != nil {
-	//        log.Fatal("copy write panic, err:%v", err)
-	//    }
-	//} ()
-	buf := make([]byte, 64)
-	readCnt := 0
-	writeCnt := 0
+func CopyToWithBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, int64, error, error) {
+	var readCnt int64 = 0
+	var writeCnt int64 = 0
 	for {
-		cnt, rerr := src.Read(buf)
-		if rerr != nil {
-			return readCnt, writeCnt, rerr, nil
-		}
-		readCnt += cnt
-
-		data := buf[0:cnt]
-		writeIndex := 0
-		writeTotal := len(data)
-		for writeIndex < writeTotal {
-			wcur, werr := dst.Write(data[writeIndex:])
-			if werr != nil {
-				return readCnt, writeCnt, rerr, werr
-			}
-			writeCnt += wcur
-			writeIndex += wcur
+		r, w, re, we := DataCopy(src, dst, buf)
+		readCnt += int64(r)
+		writeCnt += int64(w)
+		if re != nil || we != nil {
+			return readCnt, writeCnt, re, we
 		}
 	}
+}
+
+func CopyTo(dst io.Writer, src io.Reader) (int64, int64, error, error) {
+	buf := make([]byte, 32*1024)
+	return CopyToWithBuffer(dst, src, buf)
+
 }
 
 //func RecvSpecLen(conn net.Conn, buf []byte) error {
@@ -216,7 +199,7 @@ func ResolveRealAddr(addr string) string {
 	return name
 }
 
-func SendSpecLen(conn net.Conn, buf []byte) error {
+func SendSpecLen(conn io.Writer, buf []byte) error {
 	total := len(buf)
 	index := 0
 	for index < total {
