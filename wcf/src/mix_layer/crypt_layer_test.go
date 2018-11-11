@@ -45,11 +45,11 @@ func TestEncodeAndDecode(t *testing.T) {
 		t.Fatal(err)
 	}
 	encData := enc
-	dataLen, err := CheckHeadFrame(encData, len(ivin), 64*1024)
+	dataLen, err := CheckHeadFrameWithKey(encData, len(ivin), 64*1024, key)
 	if err != nil || dataLen < 0 {
 		t.Fatal(err)
 	}
-	ivout := make([]byte, HMAC_LENGTH)
+	ivout := make([]byte, 20)
 	dec, err := DecodeHeadFrame(encData, ivout, key)
 	if err != nil {
 		t.Fatal(err)

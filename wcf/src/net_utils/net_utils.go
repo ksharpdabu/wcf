@@ -2,18 +2,16 @@ package net_utils
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"math"
+	"math/big"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	//log "github.com/sirupsen/logrus"
-	"errors"
-	"fmt"
-	"math"
-	"math/big"
 )
 
 func ResolveIPRange(cidr string) (uint32, uint32) {
@@ -79,15 +77,12 @@ func Pipe(src net.Conn, dst net.Conn,
 			dw += uint64(dstWrite)
 			sre = srcReadErr
 			dwe = dstWriteErr
-			//if srcRead == 0 || dstWrite == 0 {
-			//    return
-			//}
 			if srcReadErr == nil && dstWriteErr == nil {
 				continue
 			}
 			if srcReadErr == io.EOF || dstWriteErr == io.EOF {
 				return
-			} else if err, ok := srcReadErr.(net.Error); ok && err.Timeout() {
+			} else if IsNetTimeoutErr(srcReadErr) {
 				if IsDone(ctx) {
 					return
 				}
@@ -108,22 +103,14 @@ func Pipe(src net.Conn, dst net.Conn,
 			sw += uint64(srcWrite)
 			dre = dstReadErr
 			swe = srcWriteErr
-			//if dstRead == 0 || srcWrite == 0 {
-			//    return
-			//}
 			if dstReadErr == nil && srcWriteErr == nil {
-				//logrus.Infof("re:%v, we:%v, r:%d, w:%d", dstReadErr, srcWriteErr, dstRead, srcWrite)
 				continue
 			}
-			//logrus.Infof("xre:%v, we:%v, r:%d, w:%d", dstReadErr, srcWriteErr, dstRead, srcWrite)
 			if dstReadErr == io.EOF || srcWriteErr == io.EOF {
 				return
-			} else if err, ok := dstReadErr.(net.Error); ok && err.Timeout() {
+			} else if IsNetTimeoutErr(dstReadErr) {
 				if IsDone(ctx) {
-					//logrus.Infof("connection not done:conn:%s, err:%v", dst.RemoteAddr(), err)
 					return
-				} else {
-					//logrus.Infof("connection not done, conn:%s, err:%v", dst.RemoteAddr(), err)
 				}
 			} else {
 				return
@@ -131,57 +118,56 @@ func Pipe(src net.Conn, dst net.Conn,
 		}
 	}()
 	wg.Wait()
-	return sr, sw, dr, dw, sre, swe, dre, dwe
+	return sr, sw, dr, dw, cleanNetTimeout(sre), cleanNetTimeout(swe), cleanNetTimeout(dre), cleanNetTimeout(dwe)
 }
 
-func DataCopy(src net.Conn, dst net.Conn, buffer []byte) (int, int, error, error) {
-	cnt, err := src.Read(buffer)
-	if err != nil {
-		return 0, 0, err, nil
+func cleanNetTimeout(err error) error {
+	if IsNetTimeoutErr(err) {
+		return nil
 	}
-	//logrus.Infof("read:%s->%s, data:%s", src.RemoteAddr(), dst.RemoteAddr(), string(buffer[:cnt]))
-	data := buffer[:cnt]
-	total := len(data)
-	index := 0
-	for index < total {
-		wcnt, werr := dst.Write(data[index:])
-		if werr != nil {
-			return cnt, wcnt, nil, werr
-		}
-		index += wcnt
-	}
-	return cnt, cnt, nil, nil
+	return err
 }
 
-func CopyTo(src net.Conn, dst net.Conn) (int, int, error, error) {
-	//defer func() {
-	//    err := recover()
-	//    if err != nil {
-	//        log.Fatal("copy write panic, err:%v", err)
-	//    }
-	//} ()
-	buf := make([]byte, 64)
-	readCnt := 0
-	writeCnt := 0
+func DataCopy(src io.Reader, dst io.Writer, buffer []byte) (int, int, error, error) {
+	rcnt, rerr := src.Read(buffer)
+	if rerr != nil && rcnt == 0 {
+		return 0, 0, rerr, nil
+	}
+	werr := SendSpecLen(dst, buffer[:rcnt])
+	var wcnt = 0
+	if werr == nil {
+		wcnt = rcnt
+	}
+	return rcnt, wcnt, rerr, werr
+}
+
+func IsNetTimeoutErr(cerr error) bool {
+	if cerr == nil {
+		return false
+	}
+	if err, ok := cerr.(net.Error); ok && err.Timeout() {
+		return true
+	}
+	return false
+}
+
+func CopyToWithBuffer(dst io.Writer, src io.Reader, buf []byte) (int64, int64, error, error) {
+	var readCnt int64 = 0
+	var writeCnt int64 = 0
 	for {
-		cnt, rerr := src.Read(buf)
-		if rerr != nil {
-			return readCnt, writeCnt, rerr, nil
-		}
-		readCnt += cnt
-
-		data := buf[0:cnt]
-		writeIndex := 0
-		writeTotal := len(data)
-		for writeIndex < writeTotal {
-			wcur, werr := dst.Write(data[writeIndex:])
-			if werr != nil {
-				return readCnt, writeCnt, rerr, werr
-			}
-			writeCnt += wcur
-			writeIndex += wcur
+		r, w, re, we := DataCopy(src, dst, buf)
+		readCnt += int64(r)
+		writeCnt += int64(w)
+		if re != nil || we != nil {
+			return readCnt, writeCnt, re, we
 		}
 	}
+}
+
+func CopyTo(dst io.Writer, src io.Reader) (int64, int64, error, error) {
+	buf := make([]byte, 32*1024)
+	return CopyToWithBuffer(dst, src, buf)
+
 }
 
 //func RecvSpecLen(conn net.Conn, buf []byte) error {
@@ -213,12 +199,11 @@ func ResolveRealAddr(addr string) string {
 	return name
 }
 
-func SendSpecLen(conn net.Conn, buf []byte) error {
+func SendSpecLen(conn io.Writer, buf []byte) error {
 	total := len(buf)
 	index := 0
 	for index < total {
 		cur, err := conn.Write(buf[index:])
-		//log.Printf("Send:%v, client:%s", buf[index:index+cur], conn.RemoteAddr())
 		if err != nil {
 			return err
 		}
@@ -233,19 +218,19 @@ func GetUrlInfo(req string) (error, string, string, int) {
 	reg := regexp.MustCompile("^(https?)?(://)?([-a-zA-Z0-9\\.]+):?(\\d*).*")
 	parsed := reg.FindStringSubmatch(req)
 	if len(parsed) != 5 {
-		return errors.New(fmt.Sprintf("parse fail, data:%v", parsed)), "", "", 0
+		return fmt.Errorf("parse fail, data:%v", parsed), "", "", 0
 	}
 	schema := parsed[1]
 	host := parsed[3]
 	sport := parsed[4]
 	if len(host) == 0 {
-		return errors.New(fmt.Sprintf("invalid host, url:%s", req)), "", "", 0
+		return fmt.Errorf("invalid host, url:%s", req), "", "", 0
 	}
 	var port = 80
 	if len(sport) != 0 {
 		tmp, e := strconv.ParseInt(sport, 10, 16)
 		if e != nil {
-			return errors.New(fmt.Sprintf("parse port fail, portstr:%s, url:%s", sport, req)), "", "", 0
+			return fmt.Errorf("parse port fail, portstr:%s, url:%s", sport, req), "", "", 0
 		}
 		port = int(tmp)
 	} else {
@@ -254,7 +239,7 @@ func GetUrlInfo(req string) (error, string, string, int) {
 		} else if schema == "https" {
 			port = 443
 		} else {
-			return errors.New(fmt.Sprintf("invalid schema:%s, url:%s", schema, req)), "", "", 0
+			return fmt.Errorf("invalid schema:%s, url:%s", schema, req), "", "", 0
 		}
 	}
 	return nil, schema, host, port
